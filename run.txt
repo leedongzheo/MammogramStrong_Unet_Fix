@@ -1,0 +1,14 @@
+python config.py --epoch 10 --model "abc" --mode train --saveas "SAVE" --data "DATA" --lr0 0.005 --batchsize 8 --img_size 512 512 --numclass 1
+python config.py --epoch 10 --model "abc" --mode train --saveas "SAVE" --data "DATA" --lr0 0.005 --batchsize 8 --img_size 512 512 --numclass 1 --weight_decay 0.5
+python config.py -h
+python implementation.py --epoch 10 --model "abc" --mode train --saveas "SAVE" --data "DATA" --lr0 0.005 --batchsize 8 --img_size 512 512 --numclass 1 --weight_decay 0.5
+python implementation.py --epoch 10 --model "abc" --mode train --saveas "SAVE" --data "DATA" --lr0 0.005 --batchsize 8 --img_size 512 512 --numclass 1 --weight_decay 0.5 --loss BCEDice_loss
+
+python Nhap.py --epoch 10 --model "abc" --mode train --saveas "SAVE" --data "DATA" --lr0 0.005 --batchsize 8 --img_size 512 512 --numclass 1 --weight_decay 0.5 --loss BCEDice_loss
+Loi:
+python Nhap.py --epoch 10 --model "abc" --mode pretrain --saveas "SAVE" --data "DATA" --lr0 0.005 --batchsize 8 --img_size 512 512 --numclass 1 --weight_decay 0.5 --loss BCEDice_loss 
+Sửa lại:
+python Nhap.py --epoch 10 --model "abc" --mode pretrain --saveas "SAVE" --data "DATA" --lr0 0.005 --batchsize 8 --img_size 512 512 --numclass 1 --weight_decay 0.5 --loss BCEDice_loss --checkpoint abc
+
+python Nhap.py --epoch 10 --model "abc" --mode pretrain --saveas "SAVE" --data "D:/ISIC_dataset/ISIC 2017 Dataset/format_dataset/format_dataset/format_dataset" --lr0 0.005 --batchsize 8 --img_size 512 512 --numclass 1 --weight_decay 0.5 --loss BCEDice_loss --checkpoint abc
+python Nhap.py --epoch 10 --mode pretrain --saveas "SAVE" --data "D:/ISIC_dataset/ISIC 2017 Dataset/format_dataset/format_dataset/format_dataset" --lr0 0.005 --batchsize 8 --img_size 512 512 --numclass 1 --weight_decay 0.5 --loss BCEDice_loss --checkpoint abc
