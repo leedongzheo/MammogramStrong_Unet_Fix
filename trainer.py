@@ -228,37 +228,103 @@ class Trainer:
 
         total_time = time.time() - start_time
         print(f"[INFO] Training completed in {total_time // 60:.0f}m {total_time % 60:.0f}s")
-
-    def evaluate(self, test_loader, checkpoint_path=None):
+    def evaluate(self, test_loader, checkpoint_path=None, save_visuals=False, output_dir="test_results"):
+        """
+        Đã cập nhật để hỗ trợ xuất ảnh dự đoán
+        """
         if checkpoint_path:
             self.load_checkpoint(checkpoint_path)
         
         self.model.eval()
         self.dice_list, self.iou_list, self.path_list = [], [], []
         
+        # Tạo thư mục lưu ảnh nếu cần
+        if save_visuals:
+            os.makedirs(output_dir, exist_ok=True)
+            print(f"[INFO] Saving visualization results to: {output_dir}")
+
         with torch.no_grad():
             test_bar = tqdm(enumerate(test_loader), total=len(test_loader), desc="Testing")
+            
             for i, (images, masks, image_paths) in test_bar:
                 images, masks = images.to(self.device), masks.to(self.device)
                 
-                outputs = self.model(images)
+                # Forward pass
+                logits = self.model(images)
+                # Tính xác suất để visualize (0 -> 1)
+                probs = torch.sigmoid(logits)
+                # Tạo mask nhị phân (0 hoặc 1) để vẽ
+                preds = (probs > 0.5).float()
 
+                # Lặp từng ảnh trong batch để tính metric và vẽ
                 for j in range(images.size(0)):
-                    output = outputs[j].unsqueeze(0)
-                    mask = masks[j].unsqueeze(0)
+                    # Lấy từng mẫu đơn lẻ
+                    img_single = images[j]
+                    mask_single = masks[j]
+                    pred_single = preds[j]
+                    path = image_paths[j]
                     
-                    d = dice_coeff(output, mask).item()
-                    ious = iou_core(output, mask).item()
+                    # Cần unsqueeze(0) để khớp dimension tính metric (C, H, W) -> (1, C, H, W)
+                    d = dice_coeff(preds[j].unsqueeze(0), mask_single.unsqueeze(0)).item()
+                    ious = iou_core(preds[j].unsqueeze(0), mask_single.unsqueeze(0)).item()
                     
                     self.dice_list.append(d)
                     self.iou_list.append(ious)
-                    self.path_list.append(image_paths[j])
+                    self.path_list.append(path)
+                    
+                    # --- PHẦN BỔ SUNG: VẼ ẢNH ---
+                    if save_visuals:
+                        # Lấy tên file gốc
+                        file_name = os.path.basename(path)
+                        save_name = f"pred_{file_name}" # Ví dụ: pred_image_01.png
+                        save_full_path = os.path.join(output_dir, save_name)
+                        
+                        visualize_prediction(
+                            img_tensor=img_single,
+                            mask_tensor=mask_single,
+                            pred_tensor=pred_single,
+                            save_path=save_full_path,
+                            iou_score=ious,
+                            dice_score=d
+                        )
+                    # -----------------------------
 
         avg_dice = sum(self.dice_list) / len(self.dice_list)
         avg_iou = sum(self.iou_list) / len(self.iou_list)
         
         print(f"\n[TEST RESULT] Avg Dice: {avg_dice:.4f}, Avg IoU: {avg_iou:.4f}")
         return avg_dice, avg_iou, self.dice_list, self.iou_list, self.path_list
+
+    # def evaluate(self, test_loader, checkpoint_path=None):
+    #     if checkpoint_path:
+    #         self.load_checkpoint(checkpoint_path)
+        
+    #     self.model.eval()
+    #     self.dice_list, self.iou_list, self.path_list = [], [], []
+        
+    #     with torch.no_grad():
+    #         test_bar = tqdm(enumerate(test_loader), total=len(test_loader), desc="Testing")
+    #         for i, (images, masks, image_paths) in test_bar:
+    #             images, masks = images.to(self.device), masks.to(self.device)
+                
+    #             outputs = self.model(images)
+
+    #             for j in range(images.size(0)):
+    #                 output = outputs[j].unsqueeze(0)
+    #                 mask = masks[j].unsqueeze(0)
+                    
+    #                 d = dice_coeff(output, mask).item()
+    #                 ious = iou_core(output, mask).item()
+                    
+    #                 self.dice_list.append(d)
+    #                 self.iou_list.append(ious)
+    #                 self.path_list.append(image_paths[j])
+
+    #     avg_dice = sum(self.dice_list) / len(self.dice_list)
+    #     avg_iou = sum(self.iou_list) / len(self.iou_list)
+        
+    #     print(f"\n[TEST RESULT] Avg Dice: {avg_dice:.4f}, Avg IoU: {avg_iou:.4f}")
+    #     return avg_dice, avg_iou, self.dice_list, self.iou_list, self.path_list
 
     def get_metrics(self):
         return {
