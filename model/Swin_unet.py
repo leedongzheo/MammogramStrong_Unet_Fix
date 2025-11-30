@@ -828,3 +828,9 @@ class SwinUnet(nn.Module):
                                 patch_norm=True,
                                 # use_checkpoint="expand_first"
                                 use_checkpoint=False)
+
+    def forward(self, x):
+        if x.size()[1] == 1:
+            x = x.repeat(1,3,1,1)
+        logits = self.swin_unet(x)
+        return logits
