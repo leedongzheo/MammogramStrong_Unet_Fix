@@ -6,7 +6,6 @@ import time
 import gc
 from tqdm import tqdm
 
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
 class Trainer:
     def __init__(self, model, optimizer, criterion=loss_func, patience=20, device=DEVICE):
