@@ -144,9 +144,9 @@ class Trainer:
 
             if (i + 1) % self.log_interval == 0:
                 loader_bar.set_postfix({
-                    'Loss': f"{loss.item():.4f}", 
-                    'Dice': f"{dice.item():.4f}", 
-                    'IoU': f"{iou.item():.4f}"
+                    'L': f"{loss.item():.4f}", 
+                    'D': f"{dice.item():.4f}", 
+                    'I': f"{iou.item():.4f}"
                 })
         
         avg_loss = epoch_loss / len(loader)
