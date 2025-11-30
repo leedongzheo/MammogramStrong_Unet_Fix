@@ -1,11 +1,11 @@
 from config import *
 from utils import *
 from optimizer import *
-import torch
+
 import time
 import gc
 from tqdm import tqdm
-from torch.cuda.amp import GradScaler, autocast
+
 from torch.nn.utils import clip_grad_norm_
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
