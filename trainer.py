@@ -251,6 +251,7 @@ class Trainer:
 
                 # Lặp từng ảnh trong batch
                 for j in range(images.size(0)):
+                    img_single = images[j]
                     # Lấy từng mẫu đơn lẻ (C, H, W)
                     pred_single = preds[j]
                     mask_single = masks[j]
