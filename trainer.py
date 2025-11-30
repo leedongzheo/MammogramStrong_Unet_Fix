@@ -6,7 +6,6 @@ import time
 import gc
 from tqdm import tqdm
 
-from torch.nn.utils import clip_grad_norm_
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
 class Trainer:
