@@ -238,45 +238,26 @@ class Trainer:
 
         with torch.no_grad():
             test_bar = tqdm(enumerate(test_loader), total=len(test_loader), desc="Testing")
-            
             for i, (images, masks, image_paths) in test_bar:
                 images, masks = images.to(self.device), masks.to(self.device)
-                
                 # Forward pass
                 logits = self.model(images)
                 # Tính xác suất để visualize (0 -> 1)
                 probs = torch.sigmoid(logits)
                 # Tạo mask nhị phân (0 hoặc 1) để vẽ
-                preds = (probs > 0.3).float()
-
-                # Lặp từng ảnh trong batch
+                preds = (probs > 0.5).float()
+                # Lặp từng ảnh trong batch để tính metric và vẽ
                 for j in range(images.size(0)):
+                    # Lấy từng mẫu đơn lẻ
                     img_single = images[j]
-                    # Lấy từng mẫu đơn lẻ (C, H, W)
-                    pred_single = preds[j]
                     mask_single = masks[j]
+                    pred_single = preds[j]
                     path = image_paths[j]
-                    
-                    # --- TÍNH TOÁN TRỰC TIẾP (HARD DICE/IOU) ---
-                    # Không cần sigmoid nữa vì pred_single và mask_single đã là 0 hoặc 1
-                    
-                    epsilon = 1e-6
-                    
-                    # Tính Intersection (Giao nhau)
-                    intersection = (pred_single * mask_single).sum()
-                    
-                    # Tính Dice: 2 * Giao / (Tổng pixel Pred + Tổng pixel Mask)
-                    dice_numerator = 2 * intersection
-                    dice_denominator = pred_single.sum() + mask_single.sum()
-                    d = (dice_numerator + epsilon) / (dice_denominator + epsilon)
-                    
-                    # Tính IoU: Giao / (Tổng - Giao) = Giao / Hợp
-                    union = pred_single.sum() + mask_single.sum() - intersection
-                    ious = (intersection + epsilon) / (union + epsilon)
-                    
-                    # Chuyển về float python
-                    d = d.item()
-                    ious = ious.item()
+                    logit_single = logits[j] # Lấy logit thô
+                    mask_single = masks[j]
+                    # Cần unsqueeze(0) để khớp dimension tính metric (C, H, W) -> (1, C, H, W)
+                    d = dice_coeff(logit_single.unsqueeze(0), mask_single.unsqueeze(0)).item()
+                    ious = iou_core(logit_single.unsqueeze(0), mask_single.unsqueeze(0)).item()
                     
                     self.dice_list.append(d)
                     self.iou_list.append(ious)
