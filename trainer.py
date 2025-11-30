@@ -2,11 +2,6 @@ from config import *
 from utils import *
 from optimizer import *
 
-import time
-import gc
-from tqdm import tqdm
-
-
 class Trainer:
     def __init__(self, model, optimizer, criterion=loss_func, patience=20, device=DEVICE):
         self.device = device
