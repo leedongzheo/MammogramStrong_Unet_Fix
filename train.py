@@ -61,10 +61,16 @@ def main(args):
     
     # 1. Khởi tạo Model
     print(f"[INFO] Initializing Model...")
+    model1 = smp.UnetPlusPlus(
+        encoder_name="efficientnet-b2",
+        encoder_weights="imagenet",
+        in_channels=3,
+        classes=1,
+    )
     # Bạn có thể thay đổi model tùy ý ở đây
-    model1 = Swin_unet.SwinUnet() 
-    # Swin_unet.load_pretrained_encoder(model1)
-    Swin_unet.load_pretrained_encoder(model1, "swinv2_tiny_patch4_window8_256.pth")
+    # model1 = Swin_unet.SwinUnet() 
+    # # Swin_unet.load_pretrained_encoder(model1)
+    # Swin_unet.load_pretrained_encoder(model1, "swinv2_tiny_patch4_window8_256.pth")
 
     # 2. Khởi tạo Optimizer
     # Lưu ý: Nếu muốn dùng args.lr0 đè lên config, hãy truyền vào optimizer
