@@ -50,7 +50,7 @@ def main(args):
     import numpy as np    
     from trainer import Trainer
     # from model import Unet, unet_pyramid_cbam_gate, Swin_unet
-    from model import Unet
+    from model import Swin_unet
     import optimizer as optimizer_module
     from dataset import get_dataloaders
     from result import export, export_evaluate
