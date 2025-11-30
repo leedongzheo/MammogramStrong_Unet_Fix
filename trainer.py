@@ -247,7 +247,7 @@ class Trainer:
                 # Tính xác suất để visualize (0 -> 1)
                 probs = torch.sigmoid(logits)
                 # Tạo mask nhị phân (0 hoặc 1) để vẽ
-                preds = (probs > 0.5).float()
+                preds = (probs > 0.3).float()
 
                 # Lặp từng ảnh trong batch
                 for j in range(images.size(0)):
