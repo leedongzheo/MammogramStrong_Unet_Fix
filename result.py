@@ -80,7 +80,7 @@ def export(trainer):
     plt.figure(figsize=(15, 5))
     # Tick spacing
     max_epoch = df['epoch'].max()
-    xticks_range = range(0, max_epoch + 1, 50)
+    xticks_range = range(0, max_epoch + 1, 20)
     
     plt.subplot(1, 3, 1)
     plt.plot(df['epoch'], df['train_losses'], label='Train Loss')
