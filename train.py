@@ -102,7 +102,7 @@ def main(args):
         
         # Gọi hàm evaluate với tham số lưu ảnh
         trainer.evaluate(
-            test_loader=testLoader, 
+            test_loader=trainLoader, 
             checkpoint_path=args.checkpoint,
             save_visuals=True,          # <--- Bật chế độ lưu ảnh
             output_dir=visual_folder    # <--- Truyền đường dẫn lưu
