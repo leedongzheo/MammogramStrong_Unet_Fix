@@ -62,20 +62,17 @@ def main(args):
     # 1. Khởi tạo Model
     print(f"[INFO] Initializing Model...")
     # Bạn có thể thay đổi model tùy ý ở đây
-    model = smp.UnetPlusPlus(
-        encoder_name="efficientnet-b2",
-        encoder_weights="imagenet",
-        in_channels=3,
-        classes=1,
-    )
+    model1 = Swin_unet.SwinUnet() 
+    # Swin_unet.load_pretrained_encoder(model1)
+    Swin_unet.load_pretrained_encoder(model1, "swinv2_tiny_patch4_window8_256.pth")
 
     # 2. Khởi tạo Optimizer
     # Lưu ý: Nếu muốn dùng args.lr0 đè lên config, hãy truyền vào optimizer
-    opt = optimizer_module.optimizer(model=model) 
+    opt = optimizer_module.optimizer(model=model1) 
 
     # 3. Khởi tạo Trainer
     # Lưu ý: Truyền đúng số epoch từ args vào trainer
-    trainer = Trainer(model=model, optimizer=opt)
+    trainer = Trainer(model=model1, optimizer=opt)
     # Cập nhật lại num_epochs trong trainer nếu args.epoch khác config
     if args.epoch:
         trainer.num_epochs = args.epoch
