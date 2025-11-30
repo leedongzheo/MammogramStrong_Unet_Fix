@@ -93,11 +93,28 @@ def main(args):
         # Gọi hàm train với resume_path
         trainer.train(trainLoader, validLoader, resume_path=args.checkpoint)
         export(trainer)
-
-    elif args.mode == "evaluate":
+    if args.mode == "evaluate":
         print(f"[INFO] Mode: EVALUATING")
-        trainer.evaluate(test_loader=testLoader, checkpoint_path=args.checkpoint)
+        
+        # Định nghĩa thư mục lưu ảnh kết quả
+        # Tạo folder con bên trong BASE_OUTPUT để gọn gàng
+        visual_folder = os.path.join(BASE_OUTPUT, "prediction_images")
+        
+        # Gọi hàm evaluate với tham số lưu ảnh
+        trainer.evaluate(
+            test_loader=testLoader, 
+            checkpoint_path=args.checkpoint,
+            save_visuals=True,          # <--- Bật chế độ lưu ảnh
+            output_dir=visual_folder    # <--- Truyền đường dẫn lưu
+        )
+        
+        # Xuất file CSV thống kê
         export_evaluate(trainer)
+
+    # elif args.mode == "evaluate":
+    #     print(f"[INFO] Mode: EVALUATING")
+    #     trainer.evaluate(test_loader=testLoader, checkpoint_path=args.checkpoint)
+    #     export_evaluate(trainer)
 
 if __name__ == "__main__":
     args = get_args()
