@@ -5,7 +5,6 @@ from einops import rearrange
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 import timm
 from collections import OrderedDict
-import torch.nn.functional as F
 
 class MoEFFNGating(nn.Module):
     def __init__(self, dim, hidden_dim, num_experts):
@@ -74,15 +73,7 @@ def window_reverse(windows, window_size, H, W):
     x = windows.view(B, H // window_size, W // window_size, window_size, window_size, -1)
     x = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(B, H, W, -1)
     return x
-import torch.nn.functional as F
 
-def interpolate_relative_position_bias_table(table, src_window_size, tgt_window_size, num_heads):
-    src_size = 2 * src_window_size - 1
-    tgt_size = 2 * tgt_window_size - 1
-    table = table.view(src_size, src_size, num_heads).permute(2, 0, 1).unsqueeze(0)  # 1, H, src, src
-    table = F.interpolate(table, size=(tgt_size, tgt_size), mode='bicubic', align_corners=False)
-    table = table.squeeze(0).permute(1, 2, 0).reshape(tgt_size * tgt_size, num_heads)
-    return table
 
 class WindowAttention(nn.Module):
     r""" Window based multi-head self attention (W-MSA) module with relative position bias.
@@ -98,7 +89,7 @@ class WindowAttention(nn.Module):
         proj_drop (float, optional): Dropout ratio of output. Default: 0.0
     """
 
-    def __init__(self, dim, window_size, num_heads, qkv_bias=True, qk_scale=None, attn_drop=0., proj_drop=0., pretrained_window_size=None):
+    def __init__(self, dim, window_size, num_heads, qkv_bias=True, qk_scale=None, attn_drop=0., proj_drop=0.):
 
         super().__init__()
         self.dim = dim
@@ -110,15 +101,6 @@ class WindowAttention(nn.Module):
         # define a parameter table of relative position bias
         self.relative_position_bias_table = nn.Parameter(
             torch.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1), num_heads))  # 2*Wh-1 * 2*Ww-1, nH
-        if pretrained_window_size is not None and pretrained_window_size != self.window_size[0]:
-            self.relative_position_bias_table = nn.Parameter(
-                interpolate_relative_position_bias_table(
-                    self.relative_position_bias_table.data,
-                    pretrained_window_size,
-                    self.window_size[0],
-                    self.num_heads
-                )
-            )
 
         # get pair-wise relative position index for each token inside the window
         coords_h = torch.arange(self.window_size[0])
@@ -212,7 +194,7 @@ class SwinTransformerBlock(nn.Module):
 
     def __init__(self, dim, input_resolution, num_heads, window_size=7, shift_size=0,
                  mlp_ratio=4., qkv_bias=True, qk_scale=None, drop=0., attn_drop=0., drop_path=0.,
-                 act_layer=nn.GELU, norm_layer=nn.LayerNorm, pretrained_window_size=None):
+                 act_layer=nn.GELU, norm_layer=nn.LayerNorm):
         super().__init__()
         self.dim = dim
         self.input_resolution = input_resolution
@@ -229,7 +211,7 @@ class SwinTransformerBlock(nn.Module):
         self.norm1 = norm_layer(dim)
         self.attn = WindowAttention(
             dim, window_size=to_2tuple(self.window_size), num_heads=num_heads,
-            qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop, pretrained_window_size=pretrained_window_size)
+            qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
 
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = norm_layer(dim)
@@ -443,7 +425,7 @@ class BasicLayer(nn.Module):
 
     def __init__(self, dim, input_resolution, depth, num_heads, window_size,
                  mlp_ratio=4., qkv_bias=True, qk_scale=None, drop=0., attn_drop=0.,
-                 drop_path=0., norm_layer=nn.LayerNorm, downsample=None, use_checkpoint=False,pretrained_window_size=None):
+                 drop_path=0., norm_layer=nn.LayerNorm, downsample=None, use_checkpoint=False):
 
         super().__init__()
         self.dim = dim
@@ -460,7 +442,7 @@ class BasicLayer(nn.Module):
                                  qkv_bias=qkv_bias, qk_scale=qk_scale,
                                  drop=drop, attn_drop=attn_drop,
                                  drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
-                                 norm_layer=norm_layer, pretrained_window_size=pretrained_window_size)
+                                 norm_layer=norm_layer)
             for i in range(depth)])
 
         # patch merging layer
@@ -642,7 +624,7 @@ class SwinTransformerSys(nn.Module):
 
     def __init__(self, img_size=224, patch_size=4, in_chans=3, num_classes=1000,
                  embed_dim=96, depths=[2, 2, 2, 2], depths_decoder=[1, 2, 2, 2], num_heads=[3, 6, 12, 24],
-                 window_size=7, pretrained_window_sizes=None, mlp_ratio=4., qkv_bias=True, qk_scale=None,
+                 window_size=7, mlp_ratio=4., qkv_bias=True, qk_scale=None,
                  drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
                  norm_layer=nn.LayerNorm, ape=False, patch_norm=True,
                  use_checkpoint=False, final_upsample="expand_first", **kwargs):
@@ -689,8 +671,7 @@ class SwinTransformerSys(nn.Module):
                                                  patches_resolution[1] // (2 ** i_layer)),
                                depth=depths[i_layer],
                                num_heads=num_heads[i_layer],
-                               window_size=window_size, 
-                               pretrained_window_size=pretrained_window_sizes[i_layer] if pretrained_window_sizes is not None else None,
+                               window_size=window_size,
                                mlp_ratio=self.mlp_ratio,
                                qkv_bias=qkv_bias, qk_scale=qk_scale,
                                drop=drop_rate, attn_drop=attn_drop_rate,
@@ -824,45 +805,18 @@ class SwinUnet(nn.Module):
         self.zero_head = zero_head
         # self.config = config
 
-        self.swin_unet = SwinTransformerSys(
-                                # img_size=img_size,
-                                # patch_size=4,
-                                # in_chans=in_chans,
-                                # num_classes=self.num_classes,
-                                # embed_dim=128,
-                                # # embed_dim=128,
-                                # # depths=[2, 2, 6, 2],
-                                # depths=[ 2, 2, 18, 2 ],
-                                # num_heads= [ 4, 8, 16, 32 ],
-                                # # num_heads=[4, 8, 16, 32],
-                                # window_size=16,
-                                # pretrained_window_size=[12, 12, 12, 6],
-                                # # window_size=7,
-                                # mlp_ratio=4,
-                                # qkv_bias=True,
-                                # qk_scale=None,
-                                # drop_rate=0.0,
-                                # # drop_path_rate=0.1,
-                                # drop_path_rate=0.2,
-                                # ape=False,
-                                # patch_norm=True,
-                                # # use_checkpoint="expand_first"
-                                # use_checkpoint=False)
-                                            
-            # Hoi opem
-            #-------------------------------------------- 
-                                img_size=img_size,
+        
+        self.swin_unet = SwinTransformerSys(img_size=256,
                                 patch_size=4,
                                 in_chans=in_chans,
                                 num_classes=self.num_classes,
                                 embed_dim=96,
                                 # embed_dim=128,
                                 # depths=[2, 2, 6, 2],
-                                depths=[ 2, 2, 6, 2 ],
-                                num_heads= [ 3, 6, 12, 24 ],
+                                depths=[ 2, 2, 18, 2 ],
+                                num_heads=[ 4, 8, 16, 32 ],
                                 # num_heads=[4, 8, 16, 32],
                                 window_size=8,
-                                # pretrained_window_size=[12, 12, 12, 6],
                                 # window_size=7,
                                 mlp_ratio=4,
                                 qkv_bias=True,
@@ -874,10 +828,3 @@ class SwinUnet(nn.Module):
                                 patch_norm=True,
                                 # use_checkpoint="expand_first"
                                 use_checkpoint=False)
-        # -----------------------------------------------------------------------
-
-    def forward(self, x):
-        if x.size()[1] == 1:
-            x = x.repeat(1,3,1,1)
-        logits = self.swin_unet(x)
-        return logits
