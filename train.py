@@ -61,11 +61,18 @@ def main(args):
     
     # 1. Khởi tạo Model
     print(f"[INFO] Initializing Model...")
-    model1 = smp.UnetPlusPlus(
-        encoder_name="efficientnet-b2",
-        encoder_weights="imagenet",
-        in_channels=3,
-        classes=1,
+    # model1 = smp.UnetPlusPlus(
+    #     encoder_name="efficientnet-b2",
+    #     encoder_weights="imagenet",
+    #     in_channels=3,
+    #     classes=1,
+    # )
+    model1 = smp.Unet(
+        encoder_name="efficientnet-b3", 
+        encoder_weights="imagenet",     
+        in_channels=1,                  # Ảnh x-quang đầu vào là 1 kênh (grayscale)
+        classes=1,                      # Output là 1 kênh (Mask binary)
+        decoder_attention_type="scse"   # Module attention không gian & kênh
     )
     # Bạn có thể thay đổi model tùy ý ở đây
     # model1 = Swin_unet.SwinUnet() 
