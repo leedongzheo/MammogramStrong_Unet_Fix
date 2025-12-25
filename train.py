@@ -70,7 +70,7 @@ def main(args):
     model1 = smp.Unet(
         encoder_name="efficientnet-b3", 
         encoder_weights="imagenet",     
-        in_channels=1,                  # Ảnh x-quang đầu vào là 1 kênh (grayscale)
+        in_channels=3,                  # Ảnh x-quang đầu vào là 1 kênh (grayscale)
         classes=1,                      # Output là 1 kênh (Mask binary)
         decoder_attention_type="scse"   # Module attention không gian & kênh
     )
