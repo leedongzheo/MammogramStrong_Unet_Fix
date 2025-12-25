@@ -58,7 +58,7 @@ optim = args.optimizer
 
 # tham số vừa là hằng số vừa thay đổi:
 lr0 = args.lr0 if args.lr0 else INIT_LR
-bach_size = args.batchsize if args.batchsize else BATCH_SIZE
+batch_size = args.batchsize if args.batchsize else BATCH_SIZE
 weight_decay1 = args.weight_decay if args.weight_decay else WEIGHT_DECAY1
 weight_decay2 = args.weight_decay if args.weight_decay else WEIGHT_DECAY2
 input_image_width, input_image_height = args.img_size if args.img_size else [INPUT_IMAGE_WIDTH,INPUT_IMAGE_HEIGHT]
