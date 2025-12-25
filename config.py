@@ -39,12 +39,14 @@ INIT_LR = 1e-5
 BATCH_SIZE = 8
 # WEIGHT_DECAY=1e-6
 WEIGHT_DECAY=1e-4
+WEIGHT_DECAY1=0
+WEIGHT_DECAY2=0.01
 # weight_decay = 1e-6  # Regularization term to prevent overfitting
 INPUT_IMAGE_WIDTH = 256
 INPUT_IMAGE_HEIGHT = 256
 NUM_CLASSES = 1
 BETA = (0.99, 0.999)
-AMSGRAD=True
+AMSGRAD=False
 
 """Phần II: Xử lý logic"""
 args = get_args()
@@ -56,7 +58,8 @@ optim = args.optimizer
 # tham số vừa là hằng số vừa thay đổi:
 lr0 = args.lr0 if args.lr0 else INIT_LR
 bach_size = args.batchsize if args.batchsize else BATCH_SIZE
-weight_decay = args.weight_decay if args.weight_decay else WEIGHT_DECAY
+weight_decay1 = args.weight_decay if args.weight_decay else WEIGHT_DECAY1
+weight_decay2 = args.weight_decay if args.weight_decay else WEIGHT_DECAY2
 input_image_width, input_image_height = args.img_size if args.img_size else [INPUT_IMAGE_WIDTH,INPUT_IMAGE_HEIGHT]
 numclass = args.numclass if args.numclass else NUM_CLASSES
 # THAM SỐ LUÔN THAY ĐỔI THEO nhap.py
