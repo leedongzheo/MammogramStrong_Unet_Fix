@@ -250,6 +250,34 @@ def soft_dice_loss(logits, targets, gamma=0.3, eps=1e-6):
     log_dice = -torch.log(dice)                    # [B]
     loss = log_dice.pow(gamma)                     # [B]
     return loss.mean()                             # scalar
+
+class ComboLoss(nn.Module):
+    def __init__(self, alpha=0.5, ce_ratio=0.5, focal_gamma=2.0):
+        """
+        alpha (float): Trọng số cho lớp Positive (Mass). 
+                       Nếu alpha > 0.5 -> Ưu tiên Mass.
+                       Nếu alpha < 0.5 -> Giảm ưu tiên Background (thường dùng trong Focal).
+        """
+        super().__init__()
+        self.alpha = alpha
+        self.ce_ratio = ce_ratio
+        self.focal_gamma = focal_gamma
+
+    def forward(self, logits, targets):
+        # Dice Loss (Không dùng weight, vì bản chất Dice đã tự cân bằng vùng giao thoa)
+        dice_loss = dice_coef_loss_per_image(logits, targets).mean()
+        
+        # Focal Loss (Dùng alpha làm Class Weight)
+        focal_loss = binary_focal_loss_with_logits(
+            logits, 
+            targets, 
+            alpha=self.alpha, 
+            gamma=self.focal_gamma, 
+            reduction="mean"
+        )
+        
+        combo = self.ce_ratio * focal_loss + (1 - self.ce_ratio) * dice_loss
+        return combo
 def unnormalize(img_tensor):
     """
     Chuyển Tensor (đã normalize ImageNet) về lại ảnh gốc để vẽ
@@ -307,6 +335,7 @@ def visualize_prediction(img_tensor, mask_tensor, pred_tensor, save_path, iou_sc
     plt.tight_layout()
     plt.savefig(save_path, dpi=150)
     plt.close()
+
 def loss_func(logits, targets):
     """Dùng CURRENT_LOSS_NAME để quyết định loss nào sẽ được dùng"""
     if loss == "Dice_loss":
@@ -317,6 +346,10 @@ def loss_func(logits, targets):
         return bce_dice_loss(logits, targets)
     elif loss == "BCEw_loss":
         return bce_weight_loss(logits, targets)
+    elif loss == "Combo_loss": 
+        # Khởi tạo class (nên khởi tạo 1 lần bên ngoài loop train thì tốt hơn, nhưng để đây cho gọn logic)
+        criterion = ComboLoss(alpha=0.25, ce_ratio=0.5, focal_gamma=2.0)
+        return criterion(logits, targets)
     elif loss == "BCEwDice_loss":
         return bce_dice_weight_loss(logits, targets)
     elif loss == "SoftDice_loss":
