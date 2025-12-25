@@ -338,8 +338,9 @@ def visualize_prediction(img_tensor, mask_tensor, pred_tensor, save_path, iou_sc
 
 def loss_func(logits, targets):
     """Dùng CURRENT_LOSS_NAME để quyết định loss nào sẽ được dùng"""
+    # QUAN TRỌNG: Phải .mean() để ra scalar
     if loss == "Dice_loss":
-        return dice_coef_loss_per_image(logits, targets)
+        return dice_coef_loss_per_image(logits, targets).mean()
     elif loss == "Hybric_loss":
         return hybric_loss_lib(logits, targets)
     elif loss == "BCEDice_loss":
