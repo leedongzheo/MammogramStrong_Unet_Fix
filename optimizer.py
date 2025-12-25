@@ -28,5 +28,5 @@ def optimizer(model):
         )
         return optimizer
     elif optim == "SGD":
-        optimizer = SGD(model.parameters(), lr=lr0, weight_decay=weight_decay) 
+        optimizer = SGD(model.parameters(), lr=lr0, weight_decay=weight_decay1) 
         return optimizer
