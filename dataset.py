@@ -99,13 +99,13 @@ def get_dataloaders(augment):
 	print(f"[INFO] found {len(testDS)} examples in the test set...")
 	
 	trainLoader = DataLoader(trainDS, shuffle=True,
-        batch_size=bach_size, pin_memory=PIN_MEMORY,
+        batch_size=batch_size, pin_memory=PIN_MEMORY,
         num_workers=4, worker_init_fn=seed_worker,generator=g)
 	validLoader = DataLoader(validDS, shuffle=False,
-        batch_size=bach_size, pin_memory=PIN_MEMORY,
+        batch_size=batch_size, pin_memory=PIN_MEMORY,
         num_workers=4, worker_init_fn=seed_worker, generator=g)
 	testLoader = DataLoader(testDS, shuffle=False,
-        batch_size=bach_size, pin_memory=PIN_MEMORY,
+        batch_size=batch_size, pin_memory=PIN_MEMORY,
         num_workers=4, worker_init_fn=seed_worker, generator=g)
 	
 	return trainLoader, validLoader, testLoader
