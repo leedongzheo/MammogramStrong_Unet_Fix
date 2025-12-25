@@ -14,7 +14,8 @@ def optimizer(model):
             lr = lr0,
             betas = BETA,
             weight_decay = weight_decay,
-            amsgrad = AMSGRAD  # nếu bạn muốn bật AMSGrad giống như bài báo có đề cập
+            # amsgrad = AMSGRAD  # nếu bạn muốn bật AMSGrad giống như bài báo có đề cập
+            amsgrad = False
         )
         return optimizer
     if optim == "AdamW":
@@ -24,7 +25,8 @@ def optimizer(model):
             lr = lr0,
             betas = BETA,
             weight_decay = weight_decay,
-            amsgrad = AMSGRAD  # nếu bạn muốn bật AMSGrad giống như bài báo có đề cập
+            # amsgrad = AMSGRAD  # nếu bạn muốn bật AMSGrad giống như bài báo có đề cập
+            amsgrad = False
         )
         return optimizer
     elif optim == "SGD":
