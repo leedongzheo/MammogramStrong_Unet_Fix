@@ -47,6 +47,8 @@ def set_seed():
     torch.backends.cudnn.benchmark = False
 
 def main(args):  
+    print(f"\n[DEBUG TRAIN] args.loss bạn nhập từ bàn phím = {args.loss}")
+    print("-" * 50)
     import numpy as np    
     from trainer import Trainer
     # from model import Unet, unet_pyramid_cbam_gate, Swin_unet
