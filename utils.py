@@ -318,6 +318,46 @@ class ComboLoss(nn.Module):
         
         combo = self.ce_ratio * focal_loss + (1 - self.ce_ratio) * dice_loss
         return combo
+class TverskyLoss(nn.Module):
+    def __init__(self, alpha=0.3, beta=0.7, smooth=1e-6):
+        """
+        Tversky Loss:
+        alpha: trọng số cho False Positive (Báo nhầm)
+        beta:  trọng số cho False Negative (Bỏ sót) -> Nên đặt cao (0.7) cho dữ liệu mất cân bằng
+        """
+        super().__init__()
+        self.alpha = alpha
+        self.beta = beta
+        self.smooth = smooth
+
+    def forward(self, logits, targets):
+        probs = torch.sigmoid(logits)
+        
+        # Flatten
+        probs = probs.view(-1)
+        targets = targets.view(-1)
+        
+        # True Positives, False Positives, False Negatives
+        TP = (probs * targets).sum()
+        FP = ((1 - targets) * probs).sum()
+        FN = (targets * (1 - probs)).sum()
+        
+        tversky = (TP + self.smooth) / (TP + self.alpha * FP + self.beta * FN + self.smooth)
+        return 1.0 - tversky
+
+class FocalTverskyLoss(nn.Module):
+    def __init__(self, alpha=0.3, beta=0.7, gamma=0.75, smooth=1e-6):
+        """
+        Focal Tversky: Kết hợp Tversky với cơ chế Focal để tập trung vào ca khó.
+        """
+        super().__init__()
+        self.tversky = TverskyLoss(alpha, beta, smooth)
+        self.gamma = gamma
+
+    def forward(self, logits, targets):
+        tversky_loss = self.tversky(logits, targets)
+        return torch.pow(tversky_loss, self.gamma)
+        
 def unnormalize(img_tensor):
     """
     Chuyển Tensor (đã normalize ImageNet) về lại ảnh gốc để vẽ
@@ -375,28 +415,64 @@ def visualize_prediction(img_tensor, mask_tensor, pred_tensor, save_path, iou_sc
     plt.tight_layout()
     plt.savefig(save_path, dpi=150)
     plt.close()
-
 def loss_func(logits, targets):
-    """Dùng CURRENT_LOSS_NAME để quyết định loss nào sẽ được dùng"""
-    # QUAN TRỌNG: Phải .mean() để ra scalar
-    if loss == "Dice_loss":
+    """
+    Router chọn hàm loss.
+    Lưu ý: logits là raw output từ model (chưa qua Sigmoid).
+    """
+    # 1. Tversky Loss (Khuyên dùng cho dữ liệu < 1%)
+    if loss == "Tversky_loss":
+        criterion = TverskyLoss(alpha=0.3, beta=0.7)
+        return criterion(logits, targets)
+        
+    # 2. Focal Tversky (Mạnh hơn nữa nếu model học mãi không lên)
+    elif loss == "FocalTversky_loss":
+        criterion = FocalTverskyLoss(alpha=0.3, beta=0.7, gamma=0.75)
+        return criterion(logits, targets)
+
+    # 3. Combo Loss (Dice + Focal) - Đã chỉnh alpha
+    elif loss == "Combo_loss": 
+        # alpha=0.8: Ép model học lớp dương (u) mạnh hơn
+        criterion = ComboLoss(alpha=0.8, ce_ratio=0.5, focal_gamma=2.0)
+        return criterion(logits, targets)
+
+    # 4. Các loss cơ bản khác
+    elif loss == "Dice_loss":
         return dice_coef_loss_per_image(logits, targets).mean()
-    elif loss == "Hybric_loss":
-        return hybric_loss_lib(logits, targets)
+    elif loss == "Hybric_loss": # Dice + 0.5 Focal
+        return hybric_loss(logits, targets) # Lưu ý: hybric_loss của bạn đang dùng implementation tự viết
     elif loss == "BCEDice_loss":
         return bce_dice_loss(logits, targets)
+    
+    # 5. CẢNH BÁO: Chỉ dùng nếu bạn đã tính lại pos_weight chính xác
     elif loss == "BCEw_loss":
-        return bce_weight_loss(logits, targets)
-    elif loss == "Combo_loss": 
-        # Khởi tạo class (nên khởi tạo 1 lần bên ngoài loop train thì tốt hơn, nhưng để đây cho gọn logic)
-        criterion = ComboLoss(alpha=0.25, ce_ratio=0.5, focal_gamma=2.0)
-        return criterion(logits, targets)
-    elif loss == "BCEwDice_loss":
-        return bce_dice_weight_loss(logits, targets)
-    elif loss == "SoftDice_loss":
-        return soft_dice_loss(logits, targets)
+        # Tạm thời disable hoặc cảnh báo nếu dùng số cứng 231
+        # pos_weight = số_pixel_đen / số_pixel_trắng
+        return bce_weight_loss(logits, targets, pos_weight=100.0) 
+        
     else:
-        raise ValueError(f"Unknown loss: {loss}")
+        raise ValueError(f"Unknown loss name: {loss}")
+# def loss_func(logits, targets):
+#     """Dùng CURRENT_LOSS_NAME để quyết định loss nào sẽ được dùng"""
+#     # QUAN TRỌNG: Phải .mean() để ra scalar
+#     if loss == "Dice_loss":
+#         return dice_coef_loss_per_image(logits, targets).mean()
+#     elif loss == "Hybric_loss":
+#         return hybric_loss_lib(logits, targets)
+#     elif loss == "BCEDice_loss":
+#         return bce_dice_loss(logits, targets)
+#     elif loss == "BCEw_loss":
+#         return bce_weight_loss(logits, targets)
+#     elif loss == "Combo_loss": 
+#         # Khởi tạo class (nên khởi tạo 1 lần bên ngoài loop train thì tốt hơn, nhưng để đây cho gọn logic)
+#         criterion = ComboLoss(alpha=0.25, ce_ratio=0.5, focal_gamma=2.0)
+#         return criterion(logits, targets)
+#     elif loss == "BCEwDice_loss":
+#         return bce_dice_weight_loss(logits, targets)
+#     elif loss == "SoftDice_loss":
+#         return soft_dice_loss(logits, targets)
+#     else:
+#         raise ValueError(f"Unknown loss: {loss}")
     
 
 # -------------------------------------------------------
