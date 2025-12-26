@@ -420,6 +420,7 @@ def loss_func(logits, targets):
     Router chọn hàm loss.
     Lưu ý: logits là raw output từ model (chưa qua Sigmoid).
     """
+    print(f"\n[DEBUG UTILS] Hàm loss_func đang dùng biến toàn cục 'loss' = {loss}")
     # 1. Tversky Loss (Khuyên dùng cho dữ liệu < 1%)
     if loss == "Tversky_loss":
         criterion = TverskyLoss(alpha=0.3, beta=0.7)
