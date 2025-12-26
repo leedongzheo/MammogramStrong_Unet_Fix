@@ -127,8 +127,8 @@ class Trainer:
                 with torch.no_grad():
                     # 1. Tính Metric Hard cho từng ảnh trong batch (Tensor [B])
                     # Truyền thẳng logits, hàm utils sẽ tự sigmoid -> threshold
-                    batch_dice = torch.mean(dice_coeff_hard(outputs, masks))
-                    batch_iou = torch.mean(iou_core_hard(outputs, masks))
+                    batch_dices = dice_coeff_hard(outputs, masks)
+                    batch_ious  = iou_core_hard(outputs, masks)
                     # 2. Phân loại Mass vs Normal dựa trên Ground Truth Mask
                     masks_flat = masks.view(masks.size(0), -1)
                     mask_sums = masks_flat.sum(dim=1)
