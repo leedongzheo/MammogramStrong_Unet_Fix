@@ -119,8 +119,9 @@ class Trainer:
                 loss = torch.mean(loss)
                 
                 with torch.no_grad():
-                    dice = torch.mean(dice_coeff(outputs, masks))
-                    iou = torch.mean(iou_core(outputs, masks))
+                    # Truyền thẳng logits, hàm utils sẽ tự sigmoid -> threshold
+                    batch_dice = torch.mean(dice_coeff_hard(outputs, masks))
+                    batch_iou = torch.mean(iou_core_hard(outputs, masks))
 
             if is_train:
                 self.scaler.scale(loss).backward()
@@ -132,14 +133,14 @@ class Trainer:
                 self.scheduler.step(self.current_epoch + i / len(loader)) 
 
             epoch_loss += loss.item()
-            epoch_dice += dice.item()
-            epoch_iou += iou.item()
+            epoch_dice += batch_dice.item()
+            epoch_iou += batch_iou.item()
 
             if (i + 1) % self.log_interval == 0:
                 loader_bar.set_postfix({
                     'L': f"{loss.item():.4f}", 
-                    'D': f"{dice.item():.4f}", 
-                    'I': f"{iou.item():.4f}"
+                    'D_Hard': f"{batch_dice.item():.4f}", 
+                    'I_Hard': f"{batch_iou.item():.4f}"
                 })
         
         avg_loss = epoch_loss / len(loader)
@@ -153,7 +154,7 @@ class Trainer:
         print(f"Device: {self.device}")
         print(f"Num Epochs: {self.num_epochs}")
         print(f"Early Stopping Monitor: Val Loss (Patience={self.patience})")
-        print(f"Best Model Monitor: Val IoU")
+        print(f"Best Model Monitor: Val IoU (Hard Metric)")
         print("-" * 30)
 
         if resume_path:
@@ -193,12 +194,14 @@ class Trainer:
             if val_dice > self.best_dice:
                 self.best_dice = val_dice
                 self.best_epoch_dice = epoch + 1
+                self.save_checkpoint(epoch + 1, self.best_dice, self.best_iou, 'best_dice_model.pth')
+                print(f"[*] New best Dice: {self.best_dice:.4f} at epoch {epoch+1}")
             # 2. Lưu BEST MODEL dựa trên IoU (Theo yêu cầu)
             if val_iou > self.best_iou:
                 self.best_iou = val_iou
                 self.best_epoch_iou = epoch + 1
                 
-                self.save_checkpoint(epoch + 1, self.best_dice, self.best_iou, 'best_model.pth')
+                self.save_checkpoint(epoch + 1, self.best_dice, self.best_iou, 'best_iou_model.pth')
                 print(f"[*] New best IoU: {self.best_iou:.4f} at epoch {epoch+1}")
 
             # 3. EARLY STOPPING dựa trên Val Loss (Theo yêu cầu)
@@ -242,22 +245,29 @@ class Trainer:
                 images, masks = images.to(self.device), masks.to(self.device)
                 # Forward pass
                 logits = self.model(images)
-                # Tính xác suất để visualize (0 -> 1)
-                probs = torch.sigmoid(logits)
-                # Tạo mask nhị phân (0 hoặc 1) để vẽ
-                preds = (probs > 0.5).float()
+                # 1. Tính Metric (Truyền logits thẳng vào, hàm hard tự lo phần còn lại)
+                batch_dices = dice_coeff_hard(logits, masks)
+                batch_ious = iou_core_hard(logits, masks)
+                if save_visuals:
+                    # Tính xác suất để visualize (0 -> 1)
+                    probs = torch.sigmoid(logits)
+                    # Tạo mask nhị phân (0 hoặc 1) để vẽ
+                    preds = (probs > 0.5).float()
                 # Lặp từng ảnh trong batch để tính metric và vẽ
                 for j in range(images.size(0)):
-                    # Lấy từng mẫu đơn lẻ
-                    img_single = images[j]
-                    mask_single = masks[j]
-                    pred_single = preds[j]
+                    d = batch_dices[j].item()
+                    ious = batch_ious[j].item()
                     path = image_paths[j]
-                    logit_single = logits[j] # Lấy logit thô
-                    mask_single = masks[j]
-                    # Cần unsqueeze(0) để khớp dimension tính metric (C, H, W) -> (1, C, H, W)
-                    d = dice_coeff(logit_single.unsqueeze(0), mask_single.unsqueeze(0)).item()
-                    ious = iou_core(logit_single.unsqueeze(0), mask_single.unsqueeze(0)).item()
+                    # # Lấy từng mẫu đơn lẻ
+                    # img_single = images[j]
+                    # mask_single = masks[j]
+                    # pred_single = preds[j]
+                    # path = image_paths[j]
+                    # logit_single = logits[j] # Lấy logit thô
+                    # mask_single = masks[j]
+                    # # Cần unsqueeze(0) để khớp dimension tính metric (C, H, W) -> (1, C, H, W)
+                    # d = dice_coeff(logit_single.unsqueeze(0), mask_single.unsqueeze(0)).item()
+                    # ious = iou_core(logit_single.unsqueeze(0), mask_single.unsqueeze(0)).item()
                     
                     self.dice_list.append(d)
                     self.iou_list.append(ious)
@@ -267,23 +277,33 @@ class Trainer:
                     if save_visuals:
                         # Lấy tên file gốc
                         file_name = os.path.basename(path)
-                        save_name = f"pred_{file_name}" # Ví dụ: pred_image_01.png
+                        # Prefix NORM/MASS
+                        is_normal = (masks[j].sum() == 0)
+                        prefix = "NORM" if is_normal else "MASS"
+                        save_name = f"pred_{prefix}_D{d:.2f}_{file_name}"
                         save_full_path = os.path.join(output_dir, save_name)
-                        
                         visualize_prediction(
-                            img_tensor=img_single,
-                            mask_tensor=mask_single,
-                            pred_tensor=pred_single,
+                            img_tensor=images[j],
+                            mask_tensor=masks[j],
+                            pred_tensor=preds[j], # Dùng preds đã tính ở trên
                             save_path=save_full_path,
                             iou_score=ious,
                             dice_score=d
                         )
+                        # visualize_prediction(
+                        #     img_tensor=img_single,
+                        #     mask_tensor=mask_single,
+                        #     pred_tensor=pred_single,
+                        #     save_path=save_full_path,
+                        #     iou_score=ious,
+                        #     dice_score=d
+                        # )
                     # -----------------------------
 
         avg_dice = sum(self.dice_list) / len(self.dice_list)
         avg_iou = sum(self.iou_list) / len(self.iou_list)
         
-        print(f"\n[TEST RESULT] Avg Dice: {avg_dice:.4f}, Avg IoU: {avg_iou:.4f}")
+        print(f"\n[TEST RESULT] Avg Hard Dice: {avg_dice:.4f}, Avg Hard IoU: {avg_iou:.4f}")
         return avg_dice, avg_iou, self.dice_list, self.iou_list, self.path_list
 
     # def evaluate(self, test_loader, checkpoint_path=None):
