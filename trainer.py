@@ -272,7 +272,7 @@ class Trainer:
             self.load_checkpoint(checkpoint_path)
         
         self.model.eval()
-        self.dice_list, self.iou_list, self.path_list = [], [], []
+        self.dice_list, self.iou_list, self.path_list, self.type_list = [], [], [], []
         # Biến tích lũy cho test
         total_dice_mass, count_mass = 0.0, 0
         total_dice_norm, count_norm = 0.0, 0
@@ -328,6 +328,9 @@ class Trainer:
                         file_name = os.path.basename(path)
                         # Prefix NORM/MASS
                         is_normal = (masks[j].sum() == 0)
+                        # --- THÊM ĐOẠN NÀY ---
+                        current_type = "Normal" if is_normal else "Mass"
+                        self.type_list.append(current_type)
                         prefix = "NORM" if is_normal else "MASS"
                         save_name = f"pred_{prefix}_D{d:.2f}_{file_name}"
                         save_full_path = os.path.join(output_dir, save_name)
