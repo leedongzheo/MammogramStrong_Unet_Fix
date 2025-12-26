@@ -44,7 +44,7 @@ def get_dataloaders(augment):
 	        height=INPUT_IMAGE_WIDTH,
 	        width=INPUT_IMAGE_WIDTH,
 	        interpolation=cv2.INTER_LINEAR,          # cho ảnh
-	        mask_interpolation=cv2.INTER_NEAREST     # cho mask
+	        # mask_interpolation=cv2.INTER_NEAREST     # cho mask
     ),
         	A.HorizontalFlip(p=0.5),  # lật ngang là an toàn và thường dùng
 	    	A.Rotate(limit=10, border_mode=cv2.BORDER_REFLECT_101, p=0.2),  # xoay nhẹ
