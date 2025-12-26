@@ -1,10 +1,20 @@
 
 from config import*
 from train import*
+def tensor_to_float(value):
+        if isinstance(value, torch.Tensor):
+            return value.cpu().item()  # Chuyển tensor về CPU và lấy giá trị float
+        elif isinstance(value, list):
+            return [tensor_to_float(v) for v in value]  # Xử lý danh sách các tensor
+        return value  # Nếu không phải tensor, giữ nguyên
 def export(trainer):
     source_file1='last_model.pth'
-    source_file2='best_model.pth'
-    path=f"output_epoch{trainer.best_epoch_dice}_dice{trainer.best_dice:.4f}"
+    source_file2 = 'best_dice_mass_model.pth' # Tên file best model mới
+    source_file3 = 'best_iou_mass_model.pth'  # Tên file best iou mới (nếu muốn move cả cái này)
+    # Lấy thông tin từ trainer
+    best_ep = trainer.best_epoch_dice
+    best_d = trainer.best_dice_mass
+    path=f"output_epoch{best_ep}_diceMass{best_d:.4f}"
     output_folder = os.path.join(BASE_OUTPUT,path)
     os.makedirs(output_folder, exist_ok=True)
     # Di chuyển
@@ -12,143 +22,162 @@ def export(trainer):
     if os.path.exists(exist_file_1):
         os.remove(exist_file_1)
     shutil.move(source_file1, output_folder)
+    # Di chuyển best_dice_model
     if os.path.exists(source_file2):
+        dst2 = os.path.join(output_folder, source_file2)
+        if os.path.exists(dst2):
+            os.remove(dst2)
         shutil.move(source_file2, output_folder)
-        print(f"Đã di chuyển file tới: {output_folder}")
+        print(f"Đã di chuyển {source_file2} tới: {output_folder}")
 
-    # Kiểm tra xem source_file2 có tồn tại không trước khi di chuyển
-    if os.path.exists(source_file2):
-        shutil.move(source_file2, output_folder)
-        print(f"Đã di chuyển file tới: {output_folder}")
+    # Di chuyển best_iou_model (nếu có)
+    if os.path.exists(source_file3):
+        dst3 = os.path.join(output_folder, source_file3)
+        if os.path.exists(dst3):
+             os.remove(dst3)
+        shutil.move(source_file3, output_folder)
 
-    def tensor_to_float(value):
-        if isinstance(value, torch.Tensor):
-            return value.cpu().item()  # Chuyển tensor về CPU và lấy giá trị float
-        elif isinstance(value, list):
-            return [tensor_to_float(v) for v in value]  # Xử lý danh sách các tensor
-        return value  # Nếu không phải tensor, giữ nguyên
-    # Đường dẫn file checkpoint
+    
+    # --- XỬ LÝ SỐ LIỆU (HISTORY) ---
+    checkpoint_path = os.path.join(output_folder, source_file1) # Load từ last model
+    if not os.path.exists(checkpoint_path):
+        print(f"[WARN] Không tìm thấy checkpoint để xuất lịch sử tại {checkpoint_path}")
+        return
 
-    checkpoint_path = os.path.join(output_folder,source_file1)
-    # source_file3 = "training_history.csv"  # File CSV hiện tại
-    # csv_path_full = os.path.join(BASE_OUTPUT,source_file3)
-    # Tải checkpoint
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    
+    # Lấy history dictionary
+    history = checkpoint.get('history', {})
+    
+    # Trích xuất dữ liệu (dùng key mới trong trainer.py)
+    train_losses = tensor_to_float(history.get('train_loss', []))
+    val_losses = tensor_to_float(history.get('val_loss', []))
+    
+    train_dice_mass = tensor_to_float(history.get('train_dice_mass', []))
+    val_dice_mass = tensor_to_float(history.get('val_dice_mass', []))
+    train_dice_norm = tensor_to_float(history.get('train_dice_norm', []))
+    val_dice_norm = tensor_to_float(history.get('val_dice_norm', []))
+    
+    train_iou_mass = tensor_to_float(history.get('train_iou_mass', []))
+    val_iou_mass = tensor_to_float(history.get('val_iou_mass', []))
+    train_iou_norm = tensor_to_float(history.get('train_iou_norm', []))
+    val_iou_norm = tensor_to_float(history.get('val_iou_norm', []))
 
-    # Đọc các giá trị từ checkpoint
-    train_losses = tensor_to_float(checkpoint.get('train_losses', []))
-    val_losses = tensor_to_float(checkpoint.get('val_losses', []))
-    train_dices = tensor_to_float(checkpoint.get('train_dices', []))
-    val_dices = tensor_to_float(checkpoint.get('val_dices', []))
+    # Lấy thông tin Best
+    best_dice_mass = tensor_to_float(checkpoint.get('best_dice_mass', 0))
+    best_iou_mass = tensor_to_float(checkpoint.get('best_iou_mass', 0))
+    best_epoch_dice = tensor_to_float(checkpoint.get('best_epoch_dice', 0))
+    best_epoch_iou = tensor_to_float(checkpoint.get('best_epoch_iou', 0))
     
-    train_ious = tensor_to_float(checkpoint.get('train_ious', []))
-    val_ious = tensor_to_float(checkpoint.get('val_ious', []))
-    
-    best_dice = tensor_to_float(checkpoint.get('best_dice', None))
-    best_iou = tensor_to_float(checkpoint.get('best_iou', None))
-    best_epoch_dice = tensor_to_float(checkpoint.get('best_epoch_dice', None))
-    best_epoch_iou = tensor_to_float(checkpoint.get('best_epoch_iou', None))
-    epoch = checkpoint.get('epoch', None)
-    # start_epoch=checkpoint.get('start_epoch', None) + 1
+    epoch = checkpoint.get('epoch', 0)
     epochs = list(range(1, epoch + 1))
-    # epochs = list(range(start_epoch, epoch + 1))
     
-    new_data = pd.DataFrame({
-        'train_losses': train_losses,
-        'val_losses': val_losses,
-        'train_dices': train_dices,
-        'val_dices': val_dices,
-        'train_ious': train_ious,
-        'val_ious': val_ious,
-        'best_dice': [best_dice] * len(epochs),
-        'best_iou': [best_iou] * len(epochs),
+    # Tạo DataFrame đầy đủ
+    data = {
+        'epoch': epochs,
+        'train_loss': train_losses,
+        'val_loss': val_losses,
+        # Mass Metrics
+        'train_dice_mass': train_dice_mass,
+        'val_dice_mass': val_dice_mass,
+        'train_iou_mass': train_iou_mass,
+        'val_iou_mass': val_iou_mass,
+        # Normal Metrics
+        'train_dice_norm': train_dice_norm,
+        'val_dice_norm': val_dice_norm,
+        'train_iou_norm': train_iou_norm,
+        'val_iou_norm': val_iou_norm,
+        # Best info (lặp lại cho đủ hàng)
+        'best_dice_mass': [best_dice_mass] * len(epochs),
+        'best_iou_mass': [best_iou_mass] * len(epochs),
         'best_epoch_dice': [best_epoch_dice] * len(epochs),
         'best_epoch_iou': [best_epoch_iou] * len(epochs),
-        'epoch': epochs
-    })
-    # Lưu vào file Excel
-    output_path = 'training_history_current_1.csv'
-    csv_path_currrent = os.path.join(output_folder,output_path)
-    # csv_path_currrent = os.path.join(output_folder,output_path)
-    new_data.to_csv(csv_path_currrent, index=False)
+    }
+    
+    # Đảm bảo độ dài các mảng bằng nhau (tránh lỗi nếu checkpoint lưu thiếu bước cuối)
+    min_len = min(len(v) for k, v in data.items() if isinstance(v, list))
+    for k in data:
+        if isinstance(data[k], list):
+            data[k] = data[k][:min_len]
 
-    print(f"[INFO] Training history saved to {csv_path_currrent}")
+    new_data = pd.DataFrame(data)
+    
+    # Lưu CSV
+    csv_path = os.path.join(output_folder, 'training_history.csv')
+    new_data.to_csv(csv_path, index=False)
+    print(f"[INFO] Training history saved to {csv_path}")
+    
     df = pd.read_csv(csv_path_currrent, encoding='ISO-8859-1')  # Hoặc 'latin1', 'windows-1252'
     # df.info()
 
     # Plot Losses
-    plt.figure(figsize=(15, 5))
-    # Tick spacing
-    max_epoch = df['epoch'].max()
-    xticks_range = range(0, max_epoch + 1, 10)
+    plt.figure(figsize=(18, 6)) # Tăng chiều rộng để dễ nhìn
     
+    max_epoch = df['epoch'].max()
+    xticks_range = range(0, max_epoch + 1, max(1, max_epoch // 10))
+
+    # 1. Plot Losses
     plt.subplot(1, 3, 1)
-    plt.plot(df['epoch'], df['train_losses'], label='Train Loss')
-    plt.plot(df['epoch'], df['val_losses'], label='Valid Loss')
-    plt.title('Training and Validation Losses')
+    plt.plot(df['epoch'], df['train_loss'], label='Train Loss', color='blue')
+    plt.plot(df['epoch'], df['val_loss'], label='Valid Loss', color='orange')
+    plt.title('Losses')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.legend()
-    plt.xticks(xticks_range)
-    # Trục x đến max_epoch, trục y đến max loss thật
-    plt.xlim(0, df['epoch'].max())
-    plt.ylim(0, max(df['train_losses'].max(), df['val_losses'].max()))
+    plt.grid(True, linestyle='--', alpha=0.5)
 
-    # Tỷ lệ 1:1 nhưng giữ nguyên scale gốc
-    plt.gca().set_aspect('auto', adjustable='box')
-
-    # Plot Dice Coefficients
+    # 2. Plot Dice (So sánh Mass và Norm)
     plt.subplot(1, 3, 2)
-    plt.plot(df['epoch'], df['train_dices'], label='Train Dice')
-    plt.plot(df['epoch'], df['val_dices'], label='Valid Dice')
-    plt.title('Training and Validation Dice Coefficients')
-    plt.xlabel('Epoch')
-    plt.ylabel('Dice Coefficient')
-    plt.legend()
-    plt.xticks(xticks_range)
-    # plt.gca().set_aspect('equal', adjustable='box')
-    plt.xlim(0, max_epoch)
-    plt.ylim(0, max(df['train_dices'].max(), df['val_dices'].max()))
-    plt.gca().set_aspect('auto', adjustable='box')
+    # Mass - Nét liền
+    plt.plot(df['epoch'], df['train_dice_mass'], label='Train Mass', color='green')
+    plt.plot(df['epoch'], df['val_dice_mass'], label='Valid Mass', color='red')
+    # Norm - Nét đứt (để xem model có bị ảo giác không)
+    plt.plot(df['epoch'], df['train_dice_norm'], label='Train Norm', color='lightgreen', linestyle='--')
+    plt.plot(df['epoch'], df['val_dice_norm'], label='Valid Norm', color='salmon', linestyle='--')
     
-    # Plot IOU
+    plt.title(f'Dice Coefficients (Best Mass: {best_dice_mass:.4f})')
+    plt.xlabel('Epoch')
+    plt.ylabel('Dice')
+    plt.legend()
+    plt.ylim(0, 1.05) # Dice max là 1
+    plt.grid(True, linestyle='--', alpha=0.5)
+
+    # 3. Plot IoU (So sánh Mass và Norm)
     plt.subplot(1, 3, 3)
-    plt.plot(df['epoch'], df['train_ious'], label='Train Iou')
-    plt.plot(df['epoch'], df['val_ious'], label='Valid Iou')
-    plt.title('Training and Validation IOU')
-    plt.xlabel('Epoch')
-    plt.ylabel('IOU')
-    plt.legend()
-    plt.xticks(xticks_range)
-    # plt.gca().set_aspect('equal', adjustable='box')
-    # Cân bằng trục x/y
-    plt.xlim(0, max_epoch)
-    plt.ylim(0, max(df['train_ious'].max(), df['val_ious'].max()))
-    plt.gca().set_aspect('auto', adjustable='box')
+    plt.plot(df['epoch'], df['train_iou_mass'], label='Train Mass', color='purple')
+    plt.plot(df['epoch'], df['val_iou_mass'], label='Valid Mass', color='brown')
+    plt.plot(df['epoch'], df['train_iou_norm'], label='Train Norm', color='violet', linestyle='--')
+    plt.plot(df['epoch'], df['val_iou_norm'], label='Valid Norm', color='peru', linestyle='--')
     
-    # Vẽ đồ thị
+    plt.title(f'IoU (Best Mass: {best_iou_mass:.4f})')
+    plt.xlabel('Epoch')
+    plt.ylabel('IoU')
+    plt.legend()
+    plt.ylim(0, 1.05)
+    plt.grid(True, linestyle='--', alpha=0.5)
+
     plt.tight_layout()
-        # Save the plot to a file
-    source_file4="metrics_from_excel.png"
-    output_metric = os.path.join(output_folder,source_file4)
-    plt.savefig(output_metric, dpi=300)  # Tùy chỉnh độ phân giải với tham số dpi
-    # source_folder = "/content/output" =>Bỏ
-
-    # destination_folder = "/content/drive/MyDrive/ISIC/output_02-03-2025_PreTrain8With_Dice-CrossELoss_50loop"
-    # destination_folder=os.path.join(destination_folder,path)
-    # os.makedirs(destination_folder, exist_ok=True)
-    # shutil.copytree(output_folder, destination_folder, dirs_exist_ok=True)
-
-    plt.show()
+    output_metric = os.path.join(output_folder, "metrics_chart.png")
+    plt.savefig(output_metric, dpi=300)
+    # plt.show() # Comment lại nếu chạy trên server không có màn hình
     plt.close()
+
 def export_evaluate(trainer):
     output_folder = BASE_OUTPUT
     os.makedirs(output_folder, exist_ok=True)
+    
+    # Lấy dữ liệu từ trainer (các list này được tạo trong hàm evaluate)
     df = pd.DataFrame({
         'ImagePath': trainer.path_list,
         'Dice': trainer.dice_list,
         'IoU': trainer.iou_list
     })
-    result_csv = "test_metrics_with_paths.csv"
+    
+    # Thêm cột phân loại Mass/Normal để dễ lọc
+    # Giả sử ImagePath chứa tên file, ta không biết logic label ở đây
+    # Nhưng trainer.evaluate đã print report, file csv này lưu raw data từng ảnh
+    
+    result_csv = "test_metrics_details.csv"
     output_result = os.path.join(output_folder, result_csv)
     df.to_csv(output_result, index=False)
+    print(f"[INFO] Evaluation details saved to {output_result}")
