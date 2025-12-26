@@ -13,22 +13,26 @@ class Trainer:
         
         # Tracking metrics
         self.early_stop_counter = 0
-        self.train_losses, self.val_losses = [], []
-        self.train_dices, self.val_dices = [], []
-        self.train_ious, self.val_ious = [], []
+        # self.train_losses, self.val_losses = [], []
+        # Lưu history riêng biệt để vẽ biểu đồ sau này nếu cần
+        self.history = {
+            'train_loss': [], 'val_loss': [],
+            'train_dice_mass': [], 'val_dice_mass': [],
+            'train_dice_norm': [], 'val_dice_norm': [],
+            'train_iou_mass': [],  'val_iou_mass': [],
+            'train_iou_norm': [],  'val_iou_norm': []
+        }
         
         # Best metrics tracking
-        self.best_dice, self.best_epoch_dice = 0.0, 0
-        self.best_iou, self.best_epoch_iou = 0.0, 0
-        
-        # --- THÊM: Theo dõi Best Val Loss cho Early Stopping ---
-        self.best_val_loss = float('inf') 
+        self.best_dice_mass, self.best_epoch_dice = 0.0, 0
+        self.best_iou_mass, self.best_epoch_iou = 0.0, 0
         self.best_epoch_loss = 0
-        
+        # --- THÊM: Theo dõi Best Val Loss cho Early Stopping ---
+        self.best_val_loss = float('inf')         
         self.log_interval = 1
-        self.dice_list = []
-        self.iou_list = []
-        self.path_list = []
+        # self.dice_list = []
+        # self.iou_list = []
+        # self.path_list = []
         
         # AMP & Scheduler
         self.use_amp = torch.cuda.is_available()
@@ -47,14 +51,17 @@ class Trainer:
             'optimizer_state_dict': self.optimizer.state_dict(),
             'scheduler_state_dict': self.scheduler.state_dict(),   
             'scaler_state_dict': self.scaler.state_dict(),
-            'train_losses': self.train_losses,
-            'val_losses': self.val_losses,
-            'train_dices': self.train_dices,
-            'val_dices': self.val_dices,
-            'train_ious': self.train_ious,
-            'val_ious': self.val_ious,
-            'best_dice': self.best_dice,
-            'best_iou': self.best_iou,
+            'history': self.history,
+            # 'train_losses': self.train_losses,
+            # 'val_losses': self.val_losses,
+            # 'train_dice_mass': self.train_dice_mass,
+            # 'train_dice_norm': self.train_dice_norm,
+            # # 'val_dices': self.val_dices,
+            # 'train_iou_mass': self.train_iou_mass,
+            # 'train_iou_norm': self.train_iou_norm,
+            # 'val_ious': self.val_ious,
+            'best_dice_mass': self.best_dice_mass,
+            'best_iou_mass': self.best_iou_mass,
             'best_epoch_dice': self.best_epoch_dice,
             'best_epoch_iou': self.best_epoch_iou,
             # --- THÊM: Lưu best_val_loss ---
@@ -78,21 +85,17 @@ class Trainer:
         self.start_epoch = checkpoint['epoch'] 
         
         # Load history
-        self.train_losses = checkpoint.get('train_losses', [])
-        self.val_losses = checkpoint.get('val_losses', [])
-        self.train_dices = checkpoint.get('train_dices', [])
-        self.val_dices = checkpoint.get('val_dices', [])
-        self.train_ious = checkpoint.get('train_ious', [])
-        self.val_ious = checkpoint.get('val_ious', [])
+        self.history = checkpoint.get('history', self.history)
+        # self.val_ious = checkpoint.get('val_ious', [])
         
-        self.best_dice = checkpoint.get('best_dice', 0.0)
-        self.best_iou = checkpoint.get('best_iou', 0.0)
-        self.best_epoch_dice = checkpoint.get('best_epoch_dice', 0)
-        self.best_epoch_iou = checkpoint.get('best_epoch_iou', 0)
+        self.best_dice_mass = checkpoint.get('best_dice_mass', 0.0)
+        self.best_iou_mass = checkpoint.get('best_iou_mass', 0.0)
         
         # --- THÊM: Load best_val_loss ---
         self.best_val_loss = checkpoint.get('best_val_loss', float('inf'))
         self.best_epoch_loss = checkpoint.get('best_epoch_loss', 0)
+        self.best_epoch_dice = checkpoint.get('best_epoch_dice', 0)
+        self.best_epoch_iou = checkpoint.get('best_epoch_iou', 0)
         
         print(f"[INFO] Loaded checkpoint from epoch {self.start_epoch}")
 
@@ -101,8 +104,11 @@ class Trainer:
         self.model.train() if is_train else self.model.eval()
         
         epoch_loss = 0.0
-        epoch_dice = 0.0
-        epoch_iou = 0.0
+        total_dice_mass, total_iou_mass = 0.0, 0.0
+        count_mass = 0
+        
+        total_dice_norm, total_iou_norm = 0.0, 0.0
+        count_norm = 0
         
         desc = "Training" if is_train else "Validation"
         loader_bar = tqdm(enumerate(loader), total=len(loader), desc=desc, leave=False)
@@ -119,9 +125,25 @@ class Trainer:
                 loss = torch.mean(loss)
                 
                 with torch.no_grad():
+                    # 1. Tính Metric Hard cho từng ảnh trong batch (Tensor [B])
                     # Truyền thẳng logits, hàm utils sẽ tự sigmoid -> threshold
                     batch_dice = torch.mean(dice_coeff_hard(outputs, masks))
                     batch_iou = torch.mean(iou_core_hard(outputs, masks))
+                    # 2. Phân loại Mass vs Normal dựa trên Ground Truth Mask
+                    masks_flat = masks.view(masks.size(0), -1)
+                    mask_sums = masks_flat.sum(dim=1)
+                    is_mass = (mask_sums > 0)  # Có u
+                    is_norm = (mask_sums == 0) # Không u (Normal)
+                    # 3. Cộng dồn riêng
+                    if is_mass.any():
+                        total_dice_mass += batch_dices[is_mass].sum().item()
+                        total_iou_mass  += batch_ious[is_mass].sum().item()
+                        count_mass += is_mass.sum().item()
+                    
+                    if is_norm.any():
+                        total_dice_norm += batch_dices[is_norm].sum().item()
+                        total_iou_norm  += batch_ious[is_norm].sum().item()
+                        count_norm += is_norm.sum().item()
 
             if is_train:
                 self.scaler.scale(loss).backward()
@@ -129,32 +151,44 @@ class Trainer:
                 clip_grad_norm_(self.model.parameters(), 1.0)
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
-                
                 self.scheduler.step(self.current_epoch + i / len(loader)) 
 
             epoch_loss += loss.item()
-            epoch_dice += batch_dice.item()
-            epoch_iou += batch_iou.item()
-
+            # Hiển thị progress bar
+            curr_d_mass = total_dice_mass / count_mass if count_mass > 0 else 0.0
+            curr_d_norm = total_dice_norm / count_norm if count_norm > 0 else 0.0
+            curr_i_mass = total_iou_mass / count_mass if count_mass > 0 else 0.0
+            curr_i_norm = total_iou_norm / count_norm if count_norm > 0 else 0.0
+            
             if (i + 1) % self.log_interval == 0:
                 loader_bar.set_postfix({
-                    'L': f"{loss.item():.4f}", 
-                    'D_Hard': f"{batch_dice.item():.4f}", 
-                    'I_Hard': f"{batch_iou.item():.4f}"
+                    'Loss': f"{loss.item():.4f}", 
+                    'D_Mass': f"{curr_d_mass:.3f}", 
+                    'D_Norm': f"{curr_d_norm:.3f}",
+                    'I_Mass': f"{curr_i_mass:.3f}", 
+                    'I_Norm': f"{curr_i_norm:.3f}",
                 })
         
         avg_loss = epoch_loss / len(loader)
-        avg_dice = epoch_dice / len(loader)
-        avg_iou = epoch_iou / len(loader)
+        # Metric cuối cùng của epoch
+        final_dice_mass = total_dice_mass / count_mass if count_mass > 0 else 0.0
+        final_iou_mass  = total_iou_mass / count_mass if count_mass > 0 else 0.0
         
-        return avg_loss, avg_dice, avg_iou
+        final_dice_norm = total_dice_norm / count_norm if count_norm > 0 else 0.0
+        final_iou_norm  = total_iou_norm / count_norm if count_norm > 0 else 0.0
+        
+        return {
+            'loss': avg_loss,
+            'dice_mass': final_dice_mass, 'iou_mass': final_iou_mass,
+            'dice_norm': final_dice_norm, 'iou_norm': final_iou_norm
+        }
 
     def train(self, train_loader, val_loader, resume_path=None):
         print("-" * 30)
         print(f"Device: {self.device}")
         print(f"Num Epochs: {self.num_epochs}")
         print(f"Early Stopping Monitor: Val Loss (Patience={self.patience})")
-        print(f"Best Model Monitor: Val IoU (Hard Metric)")
+        print(f"Best Model Monitor: Val IoU & IoU Mass (Hard Metric)")
         print("-" * 30)
 
         if resume_path:
@@ -167,46 +201,52 @@ class Trainer:
             self.current_epoch = epoch 
             
             # --- Training ---
-            train_loss, train_dice, train_iou = self.run_epoch(train_loader, is_train=True)
+            train_res = self.run_epoch(train_loader, is_train=True)
             
             # --- Validation ---
             with torch.no_grad():
-                val_loss, val_dice, val_iou = self.run_epoch(val_loader, is_train=False)
+                val_res = self.run_epoch(val_loader, is_train=False)
 
             # --- Logging ---
             current_lr = self.scheduler.get_last_lr()[0]
             print(f"Epoch {epoch+1}/{self.num_epochs} | LR: {current_lr:.2e}")
-            print(f"Train - Loss: {train_loss:.4f}, Dice: {train_dice:.4f}, IoU: {train_iou:.4f}")
-            print(f"Val   - Loss: {val_loss:.4f}, Dice: {val_dice:.4f}, IoU: {val_iou:.4f}")
+            # In kết quả chi tiết
+            print(f"Train - Loss: {train_res['loss']:.4f}")
+            print(f"      - Mass: Dice {train_res['dice_mass']:.4f} | IoU {train_res['iou_mass']:.4f}")
+            print(f"      - Norm: Dice {train_res['dice_norm']:.4f} | IoU {train_res['iou_norm']:.4f}")
+            
+            print(f"Val   - Loss: {val_res['loss']:.4f}")
+            print(f"      - Mass: Dice {val_res['dice_mass']:.4f} | IoU {val_res['iou_mass']:.4f}")
+            print(f"      - Norm: Dice {val_res['dice_norm']:.4f} | IoU {val_res['iou_norm']:.4f}")
 
             # Lưu history
-            self.train_losses.append(train_loss)
-            self.val_losses.append(val_loss)
-            self.train_dices.append(train_dice)
-            self.val_dices.append(val_dice)
-            self.train_ious.append(train_iou)
-            self.val_ious.append(val_iou)
-
+            # Lưu vào history
+            self.history['train_loss'].append(train_res['loss'])
+            self.history['val_loss'].append(val_res['loss'])
+            self.history['train_dice_mass'].append(train_res['dice_mass'])
+            self.history['val_dice_mass'].append(val_res['dice_mass'])
+            self.history['train_iou_mass'].append(train_res['iou_mass'])
+            self.history['val_iou_mass'].append(val_res['iou_mass'])
             # --- Checkpoint & Logic tách biệt ---
             
             # 1. Luôn lưu model mới nhất
-            self.save_checkpoint(epoch + 1, self.best_dice, self.best_iou, 'last_model.pth')
-            if val_dice > self.best_dice:
-                self.best_dice = val_dice
+            self.save_checkpoint(epoch + 1, self.best_dice_mass, self.best_iou_mass, 'last_model.pth')
+            if val_res['dice_mass'] > self.best_dice_mass:
+                self.best_dice_mass = val_res['dice_mass']
                 self.best_epoch_dice = epoch + 1
-                self.save_checkpoint(epoch + 1, self.best_dice, self.best_iou, 'best_dice_model.pth')
-                print(f"[*] New best Dice: {self.best_dice:.4f} at epoch {epoch+1}")
+                self.save_checkpoint(epoch + 1, self.best_dice_mass, self.best_iou_mass, 'best_dice_mass_model.pth')
+                print(f"[*] New best Dice: {self.best_dice_mass:.4f} at epoch {epoch+1}")
             # 2. Lưu BEST MODEL dựa trên IoU (Theo yêu cầu)
-            if val_iou > self.best_iou:
-                self.best_iou = val_iou
+            if val_res['iou_mass'] > self.best_iou_mass:
+                self.best_iou_mass = val_res['iou_mass']
                 self.best_epoch_iou = epoch + 1
                 
-                self.save_checkpoint(epoch + 1, self.best_dice, self.best_iou, 'best_iou_model.pth')
-                print(f"[*] New best IoU: {self.best_iou:.4f} at epoch {epoch+1}")
+                self.save_checkpoint(epoch + 1, self.best_dice_mass, self.best_iou_mass, 'best_iou_mass_model.pth')
+                print(f"[*] New best IoU: {self.best_dice_mass:.4f} at epoch {epoch+1}")
 
             # 3. EARLY STOPPING dựa trên Val Loss (Theo yêu cầu)
-            if val_loss < self.best_val_loss:
-                self.best_val_loss = val_loss
+            if val_res['loss'] < self.best_val_loss:
+                self.best_val_loss = val_res['loss']
                 self.best_epoch_loss = epoch + 1
                 self.early_stop_counter = 0 # Reset counter vì loss giảm (tốt lên)
                 # print(f"[*] Best Loss updated: {self.best_val_loss:.4f}") 
@@ -233,7 +273,9 @@ class Trainer:
         
         self.model.eval()
         self.dice_list, self.iou_list, self.path_list = [], [], []
-        
+        # Biến tích lũy cho test
+        total_dice_mass, count_mass = 0.0, 0
+        total_dice_norm, count_norm = 0.0, 0
         # Tạo thư mục lưu ảnh nếu cần
         if save_visuals:
             os.makedirs(output_dir, exist_ok=True)
@@ -272,7 +314,14 @@ class Trainer:
                     self.dice_list.append(d)
                     self.iou_list.append(ious)
                     self.path_list.append(path)
-                    
+                    # Logic tách metric cho Test Report
+                    is_normal = (masks[j].sum() == 0)
+                    if is_normal:
+                        total_dice_norm += d
+                        count_norm += 1
+                    else:
+                        total_dice_mass += d
+                        count_mass += 1
                     # --- PHẦN BỔ SUNG: VẼ ẢNH ---
                     if save_visuals:
                         # Lấy tên file gốc
@@ -300,11 +349,17 @@ class Trainer:
                         # )
                     # -----------------------------
 
-        avg_dice = sum(self.dice_list) / len(self.dice_list)
-        avg_iou = sum(self.iou_list) / len(self.iou_list)
-        
-        print(f"\n[TEST RESULT] Avg Hard Dice: {avg_dice:.4f}, Avg Hard IoU: {avg_iou:.4f}")
-        return avg_dice, avg_iou, self.dice_list, self.iou_list, self.path_list
+        # avg_dice = sum(self.dice_list) / len(self.dice_list)
+        # avg_iou = sum(self.iou_list) / len(self.iou_list)
+        # Báo cáo kết quả tách biệt
+        avg_dice_mass = total_dice_mass / count_mass if count_mass > 0 else 0.0
+        avg_dice_norm = total_dice_norm / count_norm if count_norm > 0 else 0.0
+        # print(f"\n[TEST RESULT] Avg Hard Dice: {avg_dice:.4f}, Avg Hard IoU: {avg_iou:.4f}")
+        print(f"\n[TEST REPORT]")
+        print(f"   - Mass Samples: {count_mass} | Avg Dice: {avg_dice_mass:.4f}")
+        print(f"   - Norm Samples: {count_norm} | Avg Dice: {avg_dice_norm:.4f}") # Chỉ số này nên là 1.0 hoặc gần 1.0
+        return avg_dice_mass, avg_dice_norm, self.dice_list, self.iou_list, self.path_list
+        # return avg_dice, avg_iou, self.dice_list, self.iou_list, self.path_list
 
     # def evaluate(self, test_loader, checkpoint_path=None):
     #     if checkpoint_path:
