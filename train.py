@@ -67,7 +67,7 @@ def main(args):
         encoder_name="efficientnet-b4", # Đã đổi theo yêu cầu của bạn
         encoder_weights="imagenet",     
         in_channels=3,                  # Giả sử bạn copy kênh xám thành 3 kênh RGB
-        classes=args.numclass,          # Thường là 1 cho Binary Segmentation
+        classes=1,          # Thường là 1 cho Binary Segmentation
         decoder_attention_type="scse"   # Module attention giúp model tập trung vào vùng u
     )
     # model1 = smp.UnetPlusPlus(
