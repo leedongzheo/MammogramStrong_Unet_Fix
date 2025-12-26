@@ -169,6 +169,7 @@ def export_evaluate(trainer):
     # Lấy dữ liệu từ trainer (các list này được tạo trong hàm evaluate)
     df = pd.DataFrame({
         'ImagePath': trainer.path_list,
+        'Type': trainer.type_list,      # <--- Cột mới: Normal hoặc Mass
         'Dice': trainer.dice_list,
         'IoU': trainer.iou_list
     })
