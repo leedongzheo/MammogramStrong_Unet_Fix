@@ -310,12 +310,15 @@ class Trainer:
                     # # Cần unsqueeze(0) để khớp dimension tính metric (C, H, W) -> (1, C, H, W)
                     # d = dice_coeff(logit_single.unsqueeze(0), mask_single.unsqueeze(0)).item()
                     # ious = iou_core(logit_single.unsqueeze(0), mask_single.unsqueeze(0)).item()
+                    # Logic phân loại Mass/Normal
+                    is_normal = (masks[j].sum() == 0)
+                    current_type = "Normal" if is_normal else "Mass"
                     
                     self.dice_list.append(d)
                     self.iou_list.append(ious)
                     self.path_list.append(path)
+                    self.type_list.append(current_type) # <--- QUAN TRỌNG: Để ở đây mới đúng
                     # Logic tách metric cho Test Report
-                    is_normal = (masks[j].sum() == 0)
                     if is_normal:
                         total_dice_norm += d
                         count_norm += 1
@@ -327,11 +330,7 @@ class Trainer:
                         # Lấy tên file gốc
                         file_name = os.path.basename(path)
                         # Prefix NORM/MASS
-                        is_normal = (masks[j].sum() == 0)
-                        # --- THÊM ĐOẠN NÀY ---
-                        current_type = "Normal" if is_normal else "Mass"
-                        self.type_list.append(current_type)
-                        prefix = "NORM" if is_normal else "MASS"
+                        prefix = "NORM" if is_normal else "MASS" # Dùng lại biến is_normal ở trên
                         save_name = f"pred_{prefix}_D{d:.2f}_{file_name}"
                         save_full_path = os.path.join(output_dir, save_name)
                         visualize_prediction(
