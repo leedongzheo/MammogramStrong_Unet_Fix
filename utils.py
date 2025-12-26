@@ -250,7 +250,41 @@ def soft_dice_loss(logits, targets, gamma=0.3, eps=1e-6):
     log_dice = -torch.log(dice)                    # [B]
     loss = log_dice.pow(gamma)                     # [B]
     return loss.mean()                             # scalar
+# ====== HARD METRICS (Cho Evaluation - Input là 0 hoặc 1) ======
 
+def dice_coeff_hard(preds, target, epsilon=1e-6):
+    """
+    Tính Dice Score trên ảnh nhị phân (0 hoặc 1).
+    preds : Tensor [B, 1, H, W] hoặc [B, H, W] đã qua threshold (giá trị 0 hoặc 1)
+    target: Tensor [B, 1, H, W] hoặc [B, H, W] (giá trị 0 hoặc 1)
+    """
+    # Flatten để tính tổng toàn bộ pixel cho từng ảnh trong batch
+    preds_flat = preds.view(preds.size(0), -1)
+    target_flat = target.view(target.size(0), -1)
+    
+    # Tính giao (Intersection)
+    intersection = (preds_flat * target_flat).sum(dim=1)
+    
+    # Tính Dice: (2 * intersection) / (sum_pred + sum_target)
+    # Epsilon cực kỳ quan trọng ở đây: 
+    # Nếu cả pred và target đều toàn 0 (ảnh Normal đoán đúng) -> (0+e)/(0+e) = 1.0 (Điểm tuyệt đối)
+    dice = (2. * intersection + epsilon) / (preds_flat.sum(dim=1) + target_flat.sum(dim=1) + epsilon)
+    
+    return dice # Trả về tensor [Batch_size] chứa điểm Dice của từng ảnh
+
+def iou_core_hard(preds, target, epsilon=1e-6):
+    """
+    Tính IoU Score trên ảnh nhị phân (0 hoặc 1).
+    """
+    preds_flat = preds.view(preds.size(0), -1)
+    target_flat = target.view(target.size(0), -1)
+    
+    intersection = (preds_flat * target_flat).sum(dim=1)
+    union = preds_flat.sum(dim=1) + target_flat.sum(dim=1) - intersection
+    
+    iou = (intersection + epsilon) / (union + epsilon)
+    
+    return iou # Trả về tensor [Batch_size]
 class ComboLoss(nn.Module):
     def __init__(self, alpha=0.5, ce_ratio=0.5, focal_gamma=2.0):
         """
