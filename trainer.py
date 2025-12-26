@@ -242,7 +242,7 @@ class Trainer:
                 self.best_epoch_iou = epoch + 1
                 
                 self.save_checkpoint(epoch + 1, self.best_dice_mass, self.best_iou_mass, 'best_iou_mass_model.pth')
-                print(f"[*] New best IoU: {self.best_dice_mass:.4f} at epoch {epoch+1}")
+                print(f"[*] New best IoU: {self.best_iou_mass:.4f} at epoch {epoch+1}")
 
             # 3. EARLY STOPPING dựa trên Val Loss (Theo yêu cầu)
             if val_res['loss'] < self.best_val_loss:
@@ -394,15 +394,12 @@ class Trainer:
 
     def get_metrics(self):
         return {
-            'train_losses': self.train_losses,
-            'val_losses': self.val_losses,
-            'train_dices': self.train_dices,
-            'val_dices': self.val_dices,
-            'train_ious': self.train_ious,
-            'val_ious': self.val_ious,
-            'best_dice': self.best_dice,
+            'history': self.history, 
+            # 'best_dice': self.best_dice,
+            'best_dice_mass': self.best_dice_mass,
             'best_epoch_dice': self.best_epoch_dice,
-            'best_iou': self.best_iou,
+            # 'best_iou': self.best_iou,
+            'best_iou_mass': self.best_iou_mass,
             'best_epoch_iou': self.best_epoch_iou,
             'best_val_loss': self.best_val_loss,
             'best_epoch_loss': self.best_epoch_loss,
