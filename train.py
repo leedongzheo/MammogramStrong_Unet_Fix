@@ -95,10 +95,6 @@ def main(args):
     # 3. Khởi tạo Trainer
     # Lưu ý: Truyền đúng số epoch từ args vào trainer
     trainer = Trainer(model=model1, optimizer=opt)
-    # Cập nhật lại num_epochs trong trainer nếu args.epoch khác config
-    if args.epoch:
-        trainer.num_epochs = args.epoch
-
     # 4. Lấy Dataloader
     # Giả sử hàm get_dataloaders nhận tham số augment và path data
     # (Bạn cần chắc chắn hàm get_dataloaders trong dataset.py hỗ trợ tham số này)
@@ -162,10 +158,6 @@ def main(args):
         # Logic: Resume thì coi như train chính thức -> Augment Mạnh (nếu bật)
         aug_type = 'strong' if args.augment else 'none'
         trainLoader, validLoader, _ = get_dataloaders(aug_mode=aug_type)
-        
-        # Cập nhật epoch đích
-        
-
         # Chạy tiếp
         trainer.train(trainLoader, validLoader, resume_path=args.checkpoint)
         export(trainer)
@@ -174,6 +166,7 @@ def main(args):
         
         # Định nghĩa thư mục lưu ảnh kết quả
         # Tạo folder con bên trong BASE_OUTPUT để gọn gàng
+        _, validLoader, _ = get_dataloaders(aug_mode='none')
         visual_folder = os.path.join(BASE_OUTPUT, "prediction_images")
         
         # Gọi hàm evaluate với tham số lưu ảnh
