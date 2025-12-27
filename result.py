@@ -114,7 +114,9 @@ def export(trainer):
     plt.figure(figsize=(18, 6)) # Tăng chiều rộng để dễ nhìn
     
     max_epoch = df['epoch'].max()
-    xticks_range = range(0, max_epoch + 1, max(1, max_epoch // 10))
+    max_epoch = int(df['epoch'].max())
+    step = int(max(1, max_epoch // 10))
+    xticks_range = range(0, max_epoch + 1, step)
 
     # 1. Plot Losses
     plt.subplot(1, 3, 1)
