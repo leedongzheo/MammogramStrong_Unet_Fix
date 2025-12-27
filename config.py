@@ -4,7 +4,7 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import numpy as np
 from torch.optim import Adam,SGD,AdamW
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
 from sklearn.model_selection import train_test_split
 from torchvision import transforms
 from imutils import paths
@@ -16,8 +16,6 @@ import time
 import pandas as pd
 # import the necessary packages
 import os
-# import the necessary packages
-from torch.utils.data import Dataset
 import cv2
 import gc
 # base path of the dataset
