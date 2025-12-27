@@ -133,7 +133,7 @@ def main(args):
             resume_point = None
 
         # 2. XỬ LÝ TRAIN CHÍNH (Giai đoạn Augment Mạnh)
-        print(f"\n=== GIAI ĐOẠN 2: MAIN TRAINING ===")
+        print(f"\n=== GIAI ĐOẠN 2: MAIN TRAINING (Target: {args.epoch} Epochs) ==="")
         
         # Logic chuyển từ boolean (args.augment) sang string (aug_mode)
         if args.augment:
