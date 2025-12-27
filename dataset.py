@@ -154,7 +154,7 @@ def get_dataloaders(augment):
 	validLoader = DataLoader(
         validDS, 
         shuffle=False, 
-        batch_size=batch_size, 
+        batch_size=batch_size*2, 
         pin_memory=PIN_MEMORY,
         num_workers=4, 
         worker_init_fn=seed_worker, 
@@ -164,7 +164,7 @@ def get_dataloaders(augment):
 	testLoader = DataLoader(
         testDS, 
         shuffle=False,
-        batch_size=batch_size, 
+        batch_size=batch_size*2, 
         pin_memory=PIN_MEMORY,
         num_workers=4, 
         worker_init_fn=seed_worker, 
