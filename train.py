@@ -102,14 +102,53 @@ def main(args):
     # 4. Lấy Dataloader
     # Giả sử hàm get_dataloaders nhận tham số augment và path data
     # (Bạn cần chắc chắn hàm get_dataloaders trong dataset.py hỗ trợ tham số này)
+    """
     trainLoader, validLoader, testLoader = get_dataloaders(augment=args.augment)
-
+    
     # 5. Xử lý các chế độ (Logic mới gọn hơn)
     if args.mode == "train":
         print("[INFO] Mode: TRAINING FROM SCRATCH")
         trainer.train(trainLoader, validLoader, resume_path=None)
         export(trainer)
+    """
+    if args.mode == "train":
+        
+        # 1. XỬ LÝ WARM-UP (Giai đoạn Augment Nhẹ)
+        # Chỉ chạy warmup nếu có bật augment VÀ số epoch warmup > 0
+        if args.augment and args.warmup > 0:
+            print(f"\n=== GIAI ĐOẠN 1: WARM-UP ({args.warmup} epochs) ===")
+            
+            # Gọi hàm với chế độ 'weak'
+            trainLoader_weak, validLoader, _ = get_dataloaders(aug_mode='weak')
+            
+            # Train vài epoch đầu
+            trainer.num_epochs = args.warmup
+            trainer.train(trainLoader_weak, validLoader, resume_path=None)
+            
+            # Lấy đường dẫn checkpoint vừa lưu để giai đoạn sau dùng tiếp
+            resume_point = os.path.join(args.saveas, "last.pth") 
+            print("=== Kết thúc Warm-up, chuyển sang Training chính thức ===")
+        else:
+            # Nếu không warmup hoặc không bật augment
+            resume_point = None
 
+        # 2. XỬ LÝ TRAIN CHÍNH (Giai đoạn Augment Mạnh)
+        print(f"\n=== GIAI ĐOẠN 2: MAIN TRAINING ===")
+        
+        # Logic chuyển từ boolean (args.augment) sang string (aug_mode)
+        if args.augment:
+            current_mode = 'strong' # Bật augment -> dùng Strong
+        else:
+            current_mode = 'none'   # Tắt augment -> dùng None
+            
+        # Gọi hàm với chế độ tương ứng
+        trainLoader_main, validLoader, _ = get_dataloaders(aug_mode=current_mode)
+        
+        # Cập nhật tổng số epoch và train tiếp
+        trainer.num_epochs = args.epoch
+        trainer.train(trainLoader_main, validLoader, resume_path=resume_point)
+
+        export(trainer)
     elif args.mode == "pretrain":
         print(f"[INFO] Mode: PRETRAINING (Resume from {args.checkpoint})")
         # Gọi hàm train với resume_path
