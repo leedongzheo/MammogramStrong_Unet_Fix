@@ -19,7 +19,7 @@ def get_args():
     parser.add_argument("--weight_decay", type=float,  help="weight_decay, default = 1e-6")
     parser.add_argument("--img_size", type=int, nargs=2,  help="Height and width of the image, default = [256, 256]")
     parser.add_argument("--numclass", type=int, help="shape of class, default = 1")
-    
+    parser.add_argument("--warmup", type=int, default=0, help="Số epoch để warm-up (augment nhẹ)")
     """
     # Với img_size, cách chạy: python script.py --img_size 256 256
     Nếu muốn nhập list dài hơn 3 phần tử, gõ 
