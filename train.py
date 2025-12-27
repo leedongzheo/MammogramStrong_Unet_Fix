@@ -129,7 +129,7 @@ def main(args):
             resume_point = None
 
         # 2. XỬ LÝ TRAIN CHÍNH (Giai đoạn Augment Mạnh)
-        print(f"\n=== GIAI ĐOẠN 2: MAIN TRAINING (Target: {args.epoch} Epochs) ==="")
+        print(f"\n=== GIAI ĐOẠN 2: MAIN TRAINING (Target: {args.epoch} Epochs) ===")
         
         # Logic chuyển từ boolean (args.augment) sang string (aug_mode)
         if args.augment:
@@ -145,12 +145,13 @@ def main(args):
         trainer.train(trainLoader_main, validLoader, resume_path=resume_point)
 
         export(trainer)
-    """    
-    elif args.mode == "pretrain":
-        print(f"[INFO] Mode: PRETRAINING (Resume from {args.checkpoint})")
-        # Gọi hàm train với resume_path
-        trainer.train(trainLoader, validLoader, resume_path=args.checkpoint)
-        export(trainer)"""
+    # """
+    # elif args.mode == "pretrain":
+    #     print(f"[INFO] Mode: PRETRAINING (Resume from {args.checkpoint})")
+    #     # Gọi hàm train với resume_path
+    #     trainer.train(trainLoader, validLoader, resume_path=args.checkpoint)
+    #     export(trainer)
+    # """
     elif args.mode == "pretrain":
         print(f"\n[INFO] Mode: RESUME TRAINING from {args.checkpoint}")
         
