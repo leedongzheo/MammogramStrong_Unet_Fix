@@ -46,10 +46,20 @@ def get_dataloaders(augment):
 	        interpolation=cv2.INTER_LINEAR,          # cho ảnh
 	        mask_interpolation=cv2.INTER_NEAREST     # cho mask
     ),
-        	A.HorizontalFlip(p=0.5),  # lật ngang là an toàn và thường dùng
-	    	A.Rotate(limit=10, border_mode=cv2.BORDER_REFLECT_101, p=0.2),  # xoay nhẹ
-	    	A.RandomBrightnessContrast(brightness_limit=0.05, contrast_limit=0.05, p=0.2),  # tăng độ sáng nhẹ
-	    	A.ShiftScaleRotate(shift_limit=0.02, scale_limit=0.05, rotate_limit=0, border_mode=cv2.BORDER_REFLECT_101, p=0.2),  # dịch và scale nhẹ
+			A.HorizontalFlip(p=0.5),
+		    A.VerticalFlip(p=0.5),
+		    A.Rotate(limit=30, p=0.5),
+		    A.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, p=0.3), # Giả lập u bị méo
+		    A.GridDistortion(p=0.3),
+		    A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=15, p=0.5),
+		
+		    # Biến đổi pixel (Pixel-level) - Giúp mô hình chống nhiễu
+		    A.GaussNoise(p=0.2),
+		    A.RandomBrightnessContrast(p=0.3),
+      #   	A.HorizontalFlip(p=0.5),  # lật ngang là an toàn và thường dùng
+	    	# A.Rotate(limit=10, border_mode=cv2.BORDER_REFLECT_101, p=0.2),  # xoay nhẹ
+	    	# A.RandomBrightnessContrast(brightness_limit=0.05, contrast_limit=0.05, p=0.2),  # tăng độ sáng nhẹ
+	    	# A.ShiftScaleRotate(shift_limit=0.02, scale_limit=0.05, rotate_limit=0, border_mode=cv2.BORDER_REFLECT_101, p=0.2),  # dịch và scale nhẹ
 	    	A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 	    	ToTensorV2()
         ])
