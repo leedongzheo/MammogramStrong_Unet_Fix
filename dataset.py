@@ -36,7 +36,7 @@ class SegmentationDataset(Dataset):
 def seed_worker(worker_id):
 		np.random.seed(SEED + worker_id)
 		random.seed(SEED + worker_id)			
-def get_dataloaders(augment):    
+def get_dataloaders(aug_mode='none'):    
 	"""
 	if augment:
 		print("[INFO] Using AUGMENTATION for training set")
