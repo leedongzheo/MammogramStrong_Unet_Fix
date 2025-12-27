@@ -227,6 +227,12 @@ class Trainer:
             self.history['val_dice_mass'].append(val_res['dice_mass'])
             self.history['train_iou_mass'].append(train_res['iou_mass'])
             self.history['val_iou_mass'].append(val_res['iou_mass'])
+            # --- THÊM 4 DÒNG NÀY (BẮT BUỘC) ---
+            self.history['train_dice_norm'].append(train_res['dice_norm'])
+            self.history['val_dice_norm'].append(val_res['dice_norm'])
+            
+            self.history['train_iou_norm'].append(train_res['iou_norm'])
+            self.history['val_iou_norm'].append(val_res['iou_norm'])
             # --- Checkpoint & Logic tách biệt ---
             
             # 1. Luôn lưu model mới nhất
