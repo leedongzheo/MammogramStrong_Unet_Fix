@@ -149,9 +149,24 @@ def main(args):
         trainer.train(trainLoader_main, validLoader, resume_path=resume_point)
 
         export(trainer)
+    """    
     elif args.mode == "pretrain":
         print(f"[INFO] Mode: PRETRAINING (Resume from {args.checkpoint})")
         # Gọi hàm train với resume_path
+        trainer.train(trainLoader, validLoader, resume_path=args.checkpoint)
+        export(trainer)"""
+    elif args.mode == "pretrain":
+        print(f"\n[INFO] Mode: RESUME TRAINING from {args.checkpoint}")
+        
+        # Bắt buộc phải load data lại ở đây vì biến trainLoader chưa có
+        # Logic: Resume thì coi như train chính thức -> Augment Mạnh (nếu bật)
+        aug_type = 'strong' if args.augment else 'none'
+        trainLoader, validLoader, _ = get_dataloaders(aug_mode=aug_type)
+        
+        # Cập nhật epoch đích
+        
+
+        # Chạy tiếp
         trainer.train(trainLoader, validLoader, resume_path=args.checkpoint)
         export(trainer)
     if args.mode == "evaluate":
