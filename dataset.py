@@ -98,48 +98,48 @@ def get_dataloaders(augment):
 	print(f"[INFO] found {len(validDS)} examples in the valid set...")
 	print(f"[INFO] found {len(testDS)} examples in the test set...")
 	# --- 3. XỬ LÝ BALANCED SAMPLING (QUAN TRỌNG) ---
-    print("[INFO] Scanning training masks to compute class weights (This may take a while)...")
-    train_targets = []
+	print("[INFO] Scanning training masks to compute class weights (This may take a while)...")
+	train_targets = []
     
     # Duyệt qua tất cả mask train để xem cái nào là Mass (1), cái nào là Normal (0)
     # Dùng tqdm để hiển thị thanh loading vì bước này đọc ổ cứng hơi lâu
-    for maskPath in tqdm(trainMasksPaths, desc="Scanning Masks"):
+	for maskPath in tqdm(trainMasksPaths, desc="Scanning Masks"):
         # Đọc chế độ grayscale (0) cho nhanh
-        mask = cv2.imread(maskPath, 0) 
+		mask = cv2.imread(maskPath, 0) 
         # Nếu có pixel nào > 0 thì là Mass (Class 1), ngược lại là Normal (Class 0)
-        if cv2.countNonZero(mask) > 0: 
-            train_targets.append(1) # Mass
-        else:
-            train_targets.append(0) # Normal
+		if cv2.countNonZero(mask) > 0: 
+			train_targets.append(1) # Mass
+		else:
+			train_targets.append(0) # Normal
     
-    train_targets = torch.tensor(train_targets)
+	train_targets = torch.tensor(train_targets)
     
     # Đếm số lượng mỗi loại
-    class_counts = torch.bincount(train_targets)
-    num_normal = class_counts[0].item()
-    num_mass = class_counts[1].item() if len(class_counts) > 1 else 0
+	class_counts = torch.bincount(train_targets)
+	num_normal = class_counts[0].item()
+	num_mass = class_counts[1].item() if len(class_counts) > 1 else 0
     
-    print(f"[INFO] Class distribution - Normal: {num_normal}, Mass: {num_mass}")
+	print(f"[INFO] Class distribution - Normal: {num_normal}, Mass: {num_mass}")
     
     # Tính trọng số cho từng Class (Class ít thì trọng số cao)
     # Tránh lỗi chia cho 0
-    weight_normal = 1. / num_normal if num_normal > 0 else 0
-    weight_mass = 1. / num_mass if num_mass > 0 else 0
-    class_weights = torch.tensor([weight_normal, weight_mass])
+	weight_normal = 1. / num_normal if num_normal > 0 else 0
+	weight_mass = 1. / num_mass if num_mass > 0 else 0
+	class_weights = torch.tensor([weight_normal, weight_mass])
     
     # Gán trọng số cho từng mẫu (Sample Weights)
-    samples_weights = class_weights[train_targets]
+	samples_weights = class_weights[train_targets]
     
     # Tạo Sampler
     # replacement=True: Cho phép bốc lặp lại mẫu (quan trọng để cân bằng)
-    sampler = WeightedRandomSampler(weights=samples_weights, num_samples=len(samples_weights), replacement=True)
+	sampler = WeightedRandomSampler(weights=samples_weights, num_samples=len(samples_weights), replacement=True)
     
     # --- 4. TẠO DATALOADERS ---
-    g = torch.Generator()
-    g.manual_seed(SEED)
+	g = torch.Generator()
+	g.manual_seed(SEED)
 
     # Train Loader: Dùng Sampler thì shuffle PHẢI LÀ FALSE
-    trainLoader = DataLoader(
+	trainLoader = DataLoader(
         trainDS, 
         batch_size=batch_size, 
         sampler=sampler,        # <--- Dùng sampler ở đây
@@ -151,7 +151,7 @@ def get_dataloaders(augment):
     )
 
     # Valid và Test Loader: Không cần Sampler, giữ nguyên
-    validLoader = DataLoader(
+	validLoader = DataLoader(
         validDS, 
         shuffle=False, 
         batch_size=batch_size, 
@@ -161,7 +161,7 @@ def get_dataloaders(augment):
         generator=g
     )
     
-    testLoader = DataLoader(
+	testLoader = DataLoader(
         testDS, 
         shuffle=False,
         batch_size=batch_size, 
