@@ -54,7 +54,7 @@ def get_dataloaders(augment):
 		    A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=15, p=0.5),
 		
 		    # Biến đổi pixel (Pixel-level) - Giúp mô hình chống nhiễu
-		    A.GaussNoise(p=0.2),
+		    # A.GaussNoise(p=0.2),
 		    A.RandomBrightnessContrast(p=0.3),
       #   	A.HorizontalFlip(p=0.5),  # lật ngang là an toàn và thường dùng
 	    	# A.Rotate(limit=10, border_mode=cv2.BORDER_REFLECT_101, p=0.2),  # xoay nhẹ
