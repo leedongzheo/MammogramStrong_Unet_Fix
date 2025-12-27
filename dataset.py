@@ -44,18 +44,26 @@ def get_dataloaders(augment):
 	        height=INPUT_IMAGE_WIDTH,
 	        width=INPUT_IMAGE_WIDTH,
 	        interpolation=cv2.INTER_LINEAR,          # cho ảnh
-	        mask_interpolation=cv2.INTER_NEAREST     # cho mask
+	        # mask_interpolation=cv2.INTER_NEAREST     # cho mask
     ),
-			A.HorizontalFlip(p=0.5),
-		    A.VerticalFlip(p=0.5),
-		    A.Rotate(limit=30, p=0.5),
-		    A.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, p=0.3), # Giả lập u bị méo
-		    A.GridDistortion(p=0.3),
-		    A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=15, p=0.5),
+			# --- Nhóm 1: Biến đổi hình học cơ bản (An toàn tuyệt đối) ---
+		    A.HorizontalFlip(p=0.5),
+		    # A.VerticalFlip(p=0.5),
+		    
+		    # --- Nhóm 2: Biến đổi tọa độ & Biến dạng (Giúp model thông minh hơn) ---
+		    # ShiftScaleRotate: Xoay nhẹ, phóng to thu nhỏ nhẹ
+		    A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=15, 
+		                       border_mode=cv2.BORDER_REFLECT_101, p=0.5),
+		    
+		    # Elastic & Grid: Giả lập u bị méo (Rất quan trọng cho Segmentation)
+		    # Lưu ý: border_mode giúp viền không bị đen sì khi méo
+		    A.ElasticTransform(alpha=0.2*512, sigma=0.08 * 512, alpha_affine=0.04 * 512, 
+		                       border_mode=cv2.BORDER_REFLECT_101, p=0.3),
+		    A.GridDistortion(border_mode=cv2.BORDER_REFLECT_101, p=0.3),
 		
 		    # Biến đổi pixel (Pixel-level) - Giúp mô hình chống nhiễu
 		    # A.GaussNoise(p=0.2),
-		    A.RandomBrightnessContrast(p=0.3),
+		    # A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.3),
       #   	A.HorizontalFlip(p=0.5),  # lật ngang là an toàn và thường dùng
 	    	# A.Rotate(limit=10, border_mode=cv2.BORDER_REFLECT_101, p=0.2),  # xoay nhẹ
 	    	# A.RandomBrightnessContrast(brightness_limit=0.05, contrast_limit=0.05, p=0.2),  # tăng độ sáng nhẹ
@@ -70,7 +78,7 @@ def get_dataloaders(augment):
 	        height=INPUT_IMAGE_WIDTH,
 	        width=INPUT_IMAGE_WIDTH,
 	        interpolation=cv2.INTER_LINEAR,          # cho ảnh
-	        mask_interpolation=cv2.INTER_NEAREST     # cho mask
+	        # mask_interpolation=cv2.INTER_NEAREST     # cho mask
     ),
             A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ToTensorV2()
@@ -81,7 +89,7 @@ def get_dataloaders(augment):
 	        height=INPUT_IMAGE_WIDTH,
 	        width=INPUT_IMAGE_WIDTH,
 	        interpolation=cv2.INTER_LINEAR,          # cho ảnh
-	        mask_interpolation=cv2.INTER_NEAREST     # cho mask
+	        # mask_interpolation=cv2.INTER_NEAREST     # cho mask
     ),
         # A.Normalize(mean=(0.0, 0.0, 0.0), std=(1.0, 1.0, 1.0)),
 	    A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
