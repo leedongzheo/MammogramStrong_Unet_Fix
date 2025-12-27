@@ -107,7 +107,7 @@ def export(trainer):
     new_data.to_csv(csv_path, index=False)
     print(f"[INFO] Training history saved to {csv_path}")
     
-    df = pd.read_csv(csv_path_currrent, encoding='ISO-8859-1')  # Hoặc 'latin1', 'windows-1252'
+    df = pd.read_csv(csv_path, encoding='ISO-8859-1')  # Hoặc 'latin1', 'windows-1252'
     # df.info()
 
     # Plot Losses
