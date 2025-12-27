@@ -428,7 +428,7 @@ def loss_func(logits, targets):
         
     # 2. Focal Tversky (Mạnh hơn nữa nếu model học mãi không lên)
     elif loss == "FocalTversky_loss":
-        criterion = FocalTverskyLoss(alpha=0.3, beta=0.7, gamma=0.75)
+        criterion = FocalTverskyLoss(alpha=0.7, beta=0.3, gamma=0.75)
         return criterion(logits, targets)
 
     # 3. Combo Loss (Dice + Focal) - Đã chỉnh alpha
