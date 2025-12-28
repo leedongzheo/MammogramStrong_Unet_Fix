@@ -376,41 +376,107 @@ def unnormalize(img_tensor):
     img = np.clip(img, 0, 1)
     return img
 
+# def visualize_prediction(img_tensor, mask_tensor, pred_tensor, save_path, iou_score, dice_score):
+#     """
+#     Vẽ và lưu ảnh so sánh: Gốc - Mask thật - Dự đoán
+#     """
+#     # 1. Chuẩn bị dữ liệu
+#     orig_img = unnormalize(img_tensor)
+    
+#     gt_mask = mask_tensor.squeeze().cpu().numpy()
+#     pred_mask = pred_tensor.squeeze().cpu().numpy()
+    
+#     # 2. Vẽ biểu đồ
+#     plt.figure(figsize=(12, 4))
+    
+#     # Ảnh gốc
+#     plt.subplot(1, 3, 1)
+#     plt.imshow(orig_img)
+#     plt.title("Ảnh gốc")
+#     plt.axis('off')
+    
+#     # Ground Truth (Mask thật)
+#     plt.subplot(1, 3, 2)
+#     plt.imshow(gt_mask, cmap='gray')
+#     plt.title("Ground Truth")
+#     plt.axis('off')
+    
+#     # Kết quả Overlay (Chồng lớp)
+#     plt.subplot(1, 3, 3)
+#     plt.imshow(orig_img)
+#     # Tô màu xanh lá cho Mask thật
+#     plt.imshow(np.ma.masked_where(gt_mask == 0, gt_mask), cmap='Greens', alpha=0.4)
+#     # Tô màu đỏ cho Mask dự đoán
+#     plt.imshow(np.ma.masked_where(pred_mask == 0, pred_mask), cmap='Reds', alpha=0.4)
+#     plt.title(f"Prediction\nIoU: {iou_score:.2f} | Dice: {dice_score:.2f}")
+#     plt.axis('off')
+    
+#     # 3. Lưu ảnh
+#     plt.tight_layout()
+#     plt.savefig(save_path, dpi=150)
+#     plt.close()
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.colors import ListedColormap
+
 def visualize_prediction(img_tensor, mask_tensor, pred_tensor, save_path, iou_score, dice_score):
     """
-    Vẽ và lưu ảnh so sánh: Gốc - Mask thật - Dự đoán
+    Vẽ ảnh chồng lớp: 
+    - Lớp 1: Ảnh gốc (Xám)
+    - Lớp 2: Ground Truth (Xanh lá - Nằm dưới)
+    - Lớp 3: Prediction (Đỏ - Trong suốt - Nằm trên)
     """
     # 1. Chuẩn bị dữ liệu
-    orig_img = unnormalize(img_tensor)
-    
+    # Chuyển về numpy và loại bỏ dimension thừa
+    orig_img = unnormalize(img_tensor) 
     gt_mask = mask_tensor.squeeze().cpu().numpy()
     pred_mask = pred_tensor.squeeze().cpu().numpy()
+
+    # 2. Định nghĩa màu (Dùng màu đơn sắc rực rỡ)
+    # Màu cho Ground Truth: Xanh lá (Green)
+    # Bạn có thể đổi hex '#00FF00' thành màu nhạt hơn như '#90EE90' (LightGreen) nếu thích
+    cmap_gt = ListedColormap(['#00FF00']) 
     
-    # 2. Vẽ biểu đồ
+    # Màu cho Prediction: Đỏ (Red) - Màu đậm/nổi bật
+    cmap_pred = ListedColormap(['#FF0000']) 
+
     plt.figure(figsize=(12, 4))
-    
-    # Ảnh gốc
+
+    # --- Cột 1: Ảnh gốc ---
     plt.subplot(1, 3, 1)
-    plt.imshow(orig_img)
+    plt.imshow(orig_img, cmap='gray')
     plt.title("Ảnh gốc")
     plt.axis('off')
-    
-    # Ground Truth (Mask thật)
+
+    # --- Cột 2: Ground Truth ---
     plt.subplot(1, 3, 2)
     plt.imshow(gt_mask, cmap='gray')
     plt.title("Ground Truth")
     plt.axis('off')
-    
-    # Kết quả Overlay (Chồng lớp)
+
+    # --- Cột 3: Overlay (Kết hợp) ---
     plt.subplot(1, 3, 3)
-    plt.imshow(orig_img)
-    # Tô màu xanh lá cho Mask thật
-    plt.imshow(np.ma.masked_where(gt_mask == 0, gt_mask), cmap='Greens', alpha=0.4)
-    # Tô màu đỏ cho Mask dự đoán
-    plt.imshow(np.ma.masked_where(pred_mask == 0, pred_mask), cmap='Reds', alpha=0.4)
-    plt.title(f"Prediction\nIoU: {iou_score:.2f} | Dice: {dice_score:.2f}")
-    plt.axis('off')
     
+    # Lớp 1: Nền ảnh gốc
+    plt.imshow(orig_img, cmap='gray')
+    
+    # Lớp 2: Ground Truth (Nằm dưới)
+    # alpha=0.6: Hơi đậm một chút để làm nền
+    plt.imshow(np.ma.masked_where(gt_mask == 0, gt_mask), 
+               cmap=cmap_gt, 
+               alpha=0.6, 
+               interpolation='none')
+    
+    # Lớp 3: Prediction (Nằm trên)
+    # alpha=0.4: Nhạt hơn/Trong suốt hơn để nhìn xuyên qua lớp GT bên dưới
+    plt.imshow(np.ma.masked_where(pred_mask == 0, pred_mask), 
+               cmap=cmap_pred, 
+               alpha=0.4, 
+               interpolation='none')
+
+    plt.title(f"Overlay (Green=GT, Red=Pred)\nIoU: {iou_score:.2f} | Dice: {dice_score:.2f}")
+    plt.axis('off')
+
     # 3. Lưu ảnh
     plt.tight_layout()
     plt.savefig(save_path, dpi=150)
