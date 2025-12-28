@@ -254,7 +254,7 @@ def soft_dice_loss(logits, targets, gamma=0.3, eps=1e-6):
 
 # --- Cập nhật vào utils.py ---
 
-def dice_coeff_hard(logits, target, threshold=0.5, epsilon=1e-6):
+def dice_coeff_hard(logits, target, threshold=0.3, epsilon=1e-6):
     """
     Tính Dice Score (Hard Metric) cho đánh giá.
     logits: Tensor raw từ model [B, 1, H, W] (CHƯA qua sigmoid)
@@ -274,7 +274,7 @@ def dice_coeff_hard(logits, target, threshold=0.5, epsilon=1e-6):
     
     return dice # Trả về tensor [Batch_size]
 
-def iou_core_hard(logits, target, threshold=0.5, epsilon=1e-6):
+def iou_core_hard(logits, target, threshold=0.3, epsilon=1e-6):
     """
     Tính IoU Score (Hard Metric) cho đánh giá.
     """
