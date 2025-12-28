@@ -122,8 +122,7 @@ def main(args):
             trainer.train(trainLoader_weak, validLoader, resume_path=None)
             
             # Lấy đường dẫn checkpoint vừa lưu để giai đoạn sau dùng tiếp
-            BASE_OUTPUT = args.saveas if args.saveas else "output"
-            resume_point = os.path.join(BASE_OUTPUT, "last_model.pth") 
+            resume_point = os.path.join(".", "last_model.pth")
             print("=== Kết thúc Warm-up, chuyển sang Training chính thức ===")
         else:
             # Nếu không warmup hoặc không bật augment
