@@ -346,7 +346,7 @@ class TverskyLoss(nn.Module):
         return 1.0 - tversky
 
 class FocalTverskyLoss(nn.Module):
-    def __init__(self, alpha=0.3, beta=0.7, gamma=0.75, smooth=1e-6):
+    def __init__(self, alpha=0.4, beta=0.6, gamma=0.75, smooth=1e-6):
         """
         Focal Tversky: Kết hợp Tversky với cơ chế Focal để tập trung vào ca khó.
         """
