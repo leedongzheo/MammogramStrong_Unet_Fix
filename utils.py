@@ -435,16 +435,17 @@ def visualize_prediction(img_tensor, mask_tensor, pred_tensor, save_path, iou_sc
     # 2. Định nghĩa màu (Dùng màu đơn sắc rực rỡ)
     # Màu cho Ground Truth: Xanh lá (Green)
     # Bạn có thể đổi hex '#00FF00' thành màu nhạt hơn như '#90EE90' (LightGreen) nếu thích
-    cmap_gt = ListedColormap(['#00FF00']) 
-    
+    # cmap_gt = ListedColormap(['#00FF00']) 
+    cmap_gt = ListedColormap(['#006400'])
     # Màu cho Prediction: Đỏ (Red) - Màu đậm/nổi bật
-    cmap_pred = ListedColormap(['#FF0000']) 
-
+    # cmap_pred = ListedColormap(['#FF0000']) 
+    cmap_pred = ListedColormap(['#8B0000'])
     plt.figure(figsize=(12, 4))
 
     # --- Cột 1: Ảnh gốc ---
     plt.subplot(1, 3, 1)
-    plt.imshow(orig_img, cmap='gray')
+    # plt.imshow(orig_img, cmap='gray')
+    plt.imshow(orig_img)
     plt.title("Ảnh gốc")
     plt.axis('off')
 
@@ -458,7 +459,8 @@ def visualize_prediction(img_tensor, mask_tensor, pred_tensor, save_path, iou_sc
     plt.subplot(1, 3, 3)
     
     # Lớp 1: Nền ảnh gốc
-    plt.imshow(orig_img, cmap='gray')
+    # plt.imshow(orig_img, cmap='gray')
+    plt.imshow(orig_img)
     
     # Lớp 2: Ground Truth (Nằm dưới)
     # alpha=0.6: Hơi đậm một chút để làm nền
